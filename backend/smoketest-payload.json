@@ -1,0 +1,12 @@
+const fs = require('fs');
+const buf = fs.readFileSync('C:/Users/Fofus/Desktop/fofus.stl');
+const o = {
+  file_name: 'fofus.stl',
+  file_size: buf.length,
+  file_base64: buf.toString('base64'),
+  printer: 'x1c', material: 'pla', infill: 20, layer_height: 0.28, supports: 'auto',
+  contact: { name: 'Smoketest', email: 'test@fofus.in', pincode: '680121' },
+  quote: { weight_g: 3.4, minutes: 4, total: 14 }
+};
+fs.writeFileSync(process.argv[2], JSON.stringify(o));
+console.log('Wrote', process.argv[2], 'size', JSON.stringify(o).length);

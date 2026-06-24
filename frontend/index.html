@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FOFUS Quote — Instant 3D Printing Estimates</title>
+<meta name="description" content="Upload an STL, pick a printer and material, get an instant 3D printing quote from FOFUS — Kerala's 3D manufacturing ecosystem.">
+<meta property="og:title" content="FOFUS Quote — Instant 3D Printing Estimates">
+<meta property="og:description" content="Upload STL → instant quote → ship to printer. Real OrcaSlicer-backed estimates.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://qoute.custom.fofus.in">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── NAV ─────────────────────────────────────────────── -->
+<nav>
+  <a class="nav-logo" href="/">
+    <span class="nav-dot"></span>
+    FOFUS <span style="opacity:.6;margin-left:4px;font-size:14px;letter-spacing:.18em">QUOTE</span>
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#machines">Machines</a>
+    <a href="#materials">Materials</a>
+    <a class="nav-cta" href="#quote">Get a quote</a>
+  </div>
+</nav>
+
+<!-- ── HERO ────────────────────────────────────────────── -->
+<section class="brandbar">
+  <div class="brand-eyebrow">3D PRINTING · KERALA · ON-DEMAND</div>
+  <h1 class="brand-h1">From <em>STL</em> to shipped part — <em>in minutes.</em></h1>
+  <p class="brand-sub">Upload your model. Pick a printer and filament. See your cost instantly. We slice it with OrcaSlicer, ship it from Thrissur.</p>
+  <div class="hero-cta-row">
+    <a class="p1-cta" href="#quote">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      Upload your STL
+    </a>
+    <a class="ghost-cta" href="#how">How it works</a>
+  </div>
+</section>
+
+<!-- ── TICKER (machine strip, copied from fofus.in) ───── -->
+<div class="ticker-wrap">
+  <div class="ticker-track">
+    <span class="ti">BAMBU LAB A1 · ₹35/HR · 256³ BUILD</span>
+    <span class="ti">BAMBU LAB X1 CARBON · ₹50/HR · 256³ BUILD</span>
+    <span class="ti">CREALITY K1 MAX · ₹45/HR · 300³ BUILD</span>
+    <span class="ti">PLA · PETG · ABS · TPU · PA-CF</span>
+    <span class="ti">SLICED WITH ORCASLICER · LOCAL THrissur PRINTS</span>
+    <span class="ti">FASTEST QUOTE IN KERALA · 30 SECONDS END-TO-END</span>
+    <!-- duplicate for seamless loop -->
+    <span class="ti">BAMBU LAB A1 · ₹35/HR · 256³ BUILD</span>
+    <span class="ti">BAMBU LAB X1 CARBON · ₹50/HR · 256³ BUILD</span>
+    <span class="ti">CREALITY K1 MAX · ₹45/HR · 300³ BUILD</span>
+    <span class="ti">PLA · PETG · ABS · TPU · PA-CF</span>
+    <span class="ti">SLICED WITH ORCASLICER · LOCAL THrissur PRINTS</span>
+    <span class="ti">FASTEST QUOTE IN KERALA · 30 SECONDS END-TO-END</span>
+  </div>
+</div>
+
+<!-- ── HOW IT WORKS ────────────────────────────────────── -->
+<section class="sec p1" id="how">
+  <div class="sec-eyebrow sec-eyebrow-gold">PROCESS</div>
+  <h2 class="sec-headline">Three steps. <em>One quote.</em></h2>
+  <p class="sec-sub">No signup. No waiting. No email back-and-forth. Drag in your file, choose your machine, see the price.</p>
+
+  <div class="svc-list">
+    <div class="svc-item">
+      <div class="svc-icon-col">01</div>
+      <div class="svc-text">
+        <div class="svc-name">Upload your 3D file</div>
+        <div class="svc-desc">STL, OBJ or 3MF. We read the geometry right in your browser — nothing leaves until you confirm. Max 100 MB.</div>
+      </div>
+    </div>
+    <div class="svc-item">
+      <div class="svc-icon-col">02</div>
+      <div class="svc-text">
+        <div class="svc-name">Pick a printer and material</div>
+        <div class="svc-desc">Bambu A1, X1 Carbon, Creality K1 Max. PLA, PETG, ABS, TPU, engineering blends. Set infill and quality. We check the build volume fits before you commit.</div>
+      </div>
+    </div>
+    <div class="svc-item">
+      <div class="svc-icon-col">03</div>
+      <div class="svc-text">
+        <div class="svc-name">See your price. Send to printer.</div>
+        <div class="svc-desc">Weight, print time, material cost, machine cost, total — broken out line by line. Hit "Request Printing" and our backend slices it with OrcaSlicer, queues it on the fleet.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── QUOTE WIDGET ────────────────────────────────────── -->
+<section class="sec p2" id="quote">
+  <div class="p2-inner">
+    <div class="sec-eyebrow sec-eyebrow-steel">QUOTE ENGINE</div>
+    <h2 class="sec-headline">Get your <em>instant quote.</em></h2>
+    <p class="sec-sub">Volume and bounding box are computed in your browser from the STL. Print time uses an empirical model calibrated against OrcaSlicer output. The number you see is what we charge.</p>
+
+    <div class="quote-grid">
+
+      <!-- LEFT: upload + settings -->
+      <div class="quote-card">
+        <div class="card-head">
+          <span class="card-num">01</span>
+          <span class="card-title">Upload</span>
+        </div>
+
+        <label class="dropzone" id="dropzone" for="stl-input">
+          <input type="file" id="stl-input" accept=".stl,.obj,.3mf" hidden>
+          <div class="dz-icon">
+            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v12M6 9l6-6 6 6M3 21h18"/></svg>
+          </div>
+          <div class="dz-text">
+            <strong>Drop STL, OBJ or 3MF here</strong>
+            <span>or click to browse · max 100 MB</span>
+          </div>
+          <div class="dz-file" id="dz-file" hidden>
+            <span id="dz-filename">—</span>
+            <span class="dz-filesize" id="dz-filesize">—</span>
+          </div>
+        </label>
+
+        <div class="model-stats" id="model-stats" hidden>
+          <div class="stat"><span class="stat-k">Volume</span><span class="stat-v" id="stat-volume">— cm³</span></div>
+          <div class="stat"><span class="stat-k">Bounding box</span><span class="stat-v" id="stat-bbox">— mm</span></div>
+          <div class="stat"><span class="stat-k">Triangles</span><span class="stat-v" id="stat-tris">—</span></div>
+        </div>
+      </div>
+
+      <div class="quote-card">
+        <div class="card-head">
+          <span class="card-num">02</span>
+          <span class="card-title">Settings</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Printer</label>
+          <div class="picker" id="printer-picker">
+            <button type="button" class="pick" data-printer="a1" data-rate="35" data-vol="256">
+              <span class="pick-name">Bambu Lab A1</span>
+              <span class="pick-rate">₹35/hr · 256³</span>
+            </button>
+            <button type="button" class="pick selected" data-printer="x1c" data-rate="50" data-vol="256">
+              <span class="pick-name">Bambu Lab X1C</span>
+              <span class="pick-rate">₹50/hr · 256³</span>
+            </button>
+            <button type="button" class="pick" data-printer="k1max" data-rate="45" data-vol="300">
+              <span class="pick-name">Creality K1 Max</span>
+              <span class="pick-rate">₹45/hr · 300³</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Material</label>
+          <div class="picker picker-grid" id="material-picker">
+            <button type="button" class="pick mat selected" data-mat="pla"  data-rate="2.5">PLA · ₹2.5/g</button>
+            <button type="button" class="pick mat" data-mat="petg" data-rate="3.5">PETG · ₹3.5/g</button>
+            <button type="button" class="pick mat" data-mat="abs"  data-rate="3.0">ABS · ₹3.0/g</button>
+            <button type="button" class="pick mat" data-mat="tpu"  data-rate="6.0">TPU · ₹6.0/g</button>
+            <button type="button" class="pick mat" data-mat="pacf" data-rate="12.0">PA-CF · ₹12/g</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Infill <span class="field-val" id="infill-val">20%</span></label>
+          <input type="range" id="infill" min="5" max="100" value="20" step="5" class="slider">
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Layer height</label>
+            <div class="picker picker-tight" id="layer-picker">
+              <button type="button" class="pick lh" data-lh="0.20">0.20</button>
+              <button type="button" class="pick lh selected" data-lh="0.28">0.28</button>
+              <button type="button" class="pick lh" data-lh="0.40">0.40</button>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Supports</label>
+            <div class="picker picker-tight" id="supports-picker">
+              <button type="button" class="pick sp selected" data-sp="auto">Auto</button>
+              <button type="button" class="pick sp" data-sp="none">None</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: quote summary -->
+      <div class="quote-card quote-summary">
+        <div class="card-head">
+          <span class="card-num gold">★</span>
+          <span class="card-title">Your quote</span>
+        </div>
+
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">↑</div>
+          <div class="empty-text">Upload a model to see your quote.</div>
+        </div>
+
+        <div class="quote-body" id="quote-body" hidden>
+          <div class="quote-row"><span>Print time</span><span id="q-time">—</span></div>
+          <div class="quote-row"><span>Weight</span><span id="q-weight">—</span></div>
+          <div class="quote-row"><span id="q-mat-label">Material (PLA · 20%)</span><span id="q-mat-cost">—</span></div>
+          <div class="quote-row"><span id="q-mach-label">Machine (X1C)</span><span id="q-mach-cost">—</span></div>
+          <div class="quote-row"><span>Service fee</span><span id="q-service">—</span></div>
+
+          <div class="quote-divider"></div>
+
+          <div class="quote-total">
+            <span class="quote-total-label">Total</span>
+            <span class="quote-total-val" id="q-total">₹—</span>
+          </div>
+
+          <div id="fit-warn" class="fit-warn" hidden>
+            ⚠ Model is larger than the selected printer's build volume.
+          </div>
+
+          <div class="quote-actions">
+            <button class="p1-cta full" id="request-print">Request printing</button>
+            <button class="ghost-cta full" id="download-quote">Download quote PDF</button>
+          </div>
+
+          <div class="quote-note" id="quote-note" hidden></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── MACHINES / MATERIALS ────────────────────────────── -->
+<section class="sec p1" id="machines">
+  <div class="sec-eyebrow sec-eyebrow-gold">FLEET</div>
+  <h2 class="sec-headline">The <em>machines.</em></h2>
+  <p class="sec-sub">Three core workhorses, picked by job. A1 for cheap PLA. X1 Carbon for engineering. K1 Max for big beds.</p>
+
+  <div class="machine-grid">
+    <div class="machine-card">
+      <div class="machine-tag">Bambu Lab A1</div>
+      <div class="machine-name">High-volume PLA workhorse</div>
+      <div class="machine-specs">
+        <div><span>Build</span><b>256 × 256 × 256 mm</b></div>
+        <div><span>Rate</span><b>₹35 / hr</b></div>
+        <div><span>Speed</span><b>500 mm/s</b></div>
+        <div><span>Best for</span><b>PLA, PETG, TPU</b></div>
+      </div>
+    </div>
+    <div class="machine-card">
+      <div class="machine-tag">Bambu Lab X1 Carbon</div>
+      <div class="machine-name">Engineering filament specialist</div>
+      <div class="machine-specs">
+        <div><span>Build</span><b>256 × 256 × 256 mm</b></div>
+        <div><span>Rate</span><b>₹50 / hr</b></div>
+        <div><span>Speed</span><b>500 mm/s</b></div>
+        <div><span>Best for</span><b>ABS, ASA, PA-CF, PC</b></div>
+      </div>
+    </div>
+    <div class="machine-card">
+      <div class="machine-tag">Creality K1 Max</div>
+      <div class="machine-name">Large-bed jobs</div>
+      <div class="machine-specs">
+        <div><span>Build</span><b>300 × 300 × 300 mm</b></div>
+        <div><span>Rate</span><b>₹45 / hr</b></div>
+        <div><span>Speed</span><b>600 mm/s</b></div>
+        <div><span>Best for</span><b>Big parts, fast drafts</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec p2" id="materials">
+  <div class="p2-inner">
+    <div class="sec-eyebrow sec-eyebrow-indigo">FILAMENTS</div>
+    <h2 class="sec-headline">The <em>materials.</em></h2>
+    <p class="sec-sub">Stock filaments priced by the gram. PA-CF and other engineering blends cost more — the price you see is the price we pay.</p>
+
+    <table class="mat-table">
+      <thead>
+        <tr><th>Material</th><th>₹ / gram</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>PLA</b></td><td>₹2.50</td><td>Easiest, biodegradable, vibrant colors</td></tr>
+        <tr><td><b>PETG</b></td><td>₹3.50</td><td>Tough, slight flex, food-safe options</td></tr>
+        <tr><td><b>ABS</b></td><td>₹3.00</td><td>Heat-resistant; needs enclosure</td></tr>
+        <tr><td><b>TPU</b></td><td>₹6.00</td><td>Flexible, rubber-like, slow print</td></tr>
+        <tr><td><b>PA-CF</b></td><td>₹12.00</td><td>Carbon-fiber nylon, engineering grade</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── FOOTER ──────────────────────────────────────────── -->
+<footer>
+  <div class="foot-grid">
+    <div>
+      <div class="foot-logo">FOFUS</div>
+      <div class="foot-tag">3D manufacturing ecosystem · Irinjalakuda, Thrissur, Kerala</div>
+    </div>
+    <div>
+      <div class="foot-h">Quote</div>
+      <a href="#quote">Get instant quote</a>
+      <a href="#machines">Machines</a>
+      <a href="#materials">Materials</a>
+    </div>
+    <div>
+      <div class="foot-h">FOFUS</div>
+      <a href="https://fofus.in">fofus.in</a>
+      <a href="mailto:hello@fofus.in">hello@fofus.in</a>
+    </div>
+  </div>
+  <div class="foot-bottom">© 2026 FOFUS · Quote engine v0.1 · Built in Thrissur</div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
