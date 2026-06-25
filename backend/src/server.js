@@ -47,6 +47,22 @@ app.get('/api/health', (_req, res) => res.json({
   time: new Date().toISOString(),
 }));
 
+// ── Root ────────────────────────────────────────────────────────────
+app.get('/', (_req, res) => res.json({
+  service: 'fofus-quote-backend',
+  version: '0.1.0',
+  docs: 'https://github.com/reventer-bus/fofus-quote',
+  endpoints: [
+    'GET  /api/health',
+    'GET  /api/slicer/check',
+    'POST /api/print-jobs',
+    'POST /api/print-jobs/upload',
+    'POST /api/print-jobs/:id/slice',
+    'GET  /api/print-jobs/:id',
+    'GET  /api/print-jobs (admin)',
+  ],
+}));
+
 // ── Slicer health ───────────────────────────────────────────────────
 app.get('/api/slicer/check', async (_req, res) => {
   const h = await slicerHealth();
