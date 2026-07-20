@@ -23,7 +23,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     SLICER_APPIMAGE=OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage
 
 # System deps:
-#   - node 20 + npm
 #   - fuse3: required to run the OrcaSlicer AppImage
 #   - libfuse2: AppImage uses libfuse2 (older API)
 #   - libgtk-3-0 / libnss3 / libgbm1: OrcaSlicer GTK runtime
@@ -34,7 +33,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxshmfence1 libxcomposite1 libxdamage1 libxrandr2 \
     libpango-1.0-0 libcairo2 libcups2 libatk1.0-0 libatk-bridge2.0-0 \
     libdrm2 libgconf-2-4 libxkbcommon0 fonts-liberation \
-    nodejs npm \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install Node 20 from NodeSource (must match builder stage for native modules)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
  && rm -rf /var/lib/apt/lists/*
 
 # Install OrcaSlicer AppImage
