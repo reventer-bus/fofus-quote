@@ -58,6 +58,7 @@ app.get('/', (_req, res) => res.json({
     'POST /api/print-jobs',
     'POST /api/print-jobs/upload',
     'POST /api/print-jobs/:id/slice',
+    'POST /api/print-jobs/:id/forward',
     'GET  /api/print-jobs/:id',
     'GET  /api/print-jobs (admin)',
   ],
@@ -227,6 +228,58 @@ app.get('/api/print-jobs/:id/file', async (req, res) => {
   const filePath = kind === 'original' ? job.stored_path : job.gcode_path;
   if (!filePath) return res.status(404).json({ error: `${kind} not available` });
   res.download(filePath);
+});
+
+// ── Forward accepted quote to PrintDash (creates an order) ──────────
+app.post('/api/print-jobs/:id/forward', async (req, res) => {
+  const job = getJob(db, req.params.id);
+  if (!job) return res.status(404).json({ error: 'not found' });
+  if (job.status !== 'sliced') return res.status(400).json({ error: 'job must be sliced first' });
+
+  const quote = job.final_quote || job.client_quote;
+  if (!quote) return res.status(400).json({ error: 'no quote available' });
+
+  const PRINTDASH_BASE = process.env.PRINTDASH_BASE || 'https://printdash-production.up.railway.app';
+  const PRINTDASH_API_KEY = process.env.PRINTDASH_API_KEY || '';
+
+  try {
+    const orderReq = {
+      customer_name: job.contact_name || 'Unknown',
+      customer_phone: job.contact_phone || '',
+      customer_email: job.contact_email || '',
+      product_name: job.file_name || 'Custom 3D Print',
+      material: (job.material || 'pla').toUpperCase(),
+      weight_g: quote.weight_g || 0,
+      print_time_min: quote.minutes || 0,
+      machine: job.printer === 'a1' ? 'BambuA1' : job.printer === 'x1c' ? 'BambuX1C' : 'BambuA1',
+      total_inr: quote.total_inr || 0,
+      model_file_path: job.gcode_path || job.stored_path || '',
+      notes: `From fofus-quote job ${job.id}. G-code: ${job.gcode_path ? 'yes' : 'no'}`,
+      source: 'fofus-quote',
+    };
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (PRINTDASH_API_KEY) headers['X-API-Key'] = PRINTDASH_API_KEY;
+
+    const resp = await fetch(`${PRINTDASH_BASE}/api/v1/orders/create`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(orderReq),
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error('PrintDash order creation failed:', resp.status, errText);
+      return res.status(502).json({ error: `PrintDash returned ${resp.status}`, detail: errText.slice(0, 500) });
+    }
+
+    const result = await resp.json();
+    updateJob(db, job.id, { status: 'forwarded', notes: `PrintDash order: ${result.order_id}` });
+    res.json({ job_id: job.id, status: 'forwarded', printdash_order_id: result.order_id });
+  } catch (e) {
+    console.error('Forward to PrintDash failed:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Start ───────────────────────────────────────────────────────────
