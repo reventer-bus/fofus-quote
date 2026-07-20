@@ -19,7 +19,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PORT=3000 \
     NODE_ENV=production \
     SLICER_BIN=/usr/local/bin/orca-slicer \
-    SLICER_VERSION=2.3.1
+    SLICER_VERSION=2.3.1 \
+    SLICER_APPIMAGE=OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage
 
 # System deps:
 #   - node 20 + npm
@@ -43,7 +44,7 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
       echo "OrcaSlicer AppImage only ships for x86_64. Use amd64 on Railway." && exit 1; \
     fi && \
     curl -fsSL -o /tmp/orca.AppImage \
-      https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v${SLICER_VERSION}/OrcaSlicer_Linux_V${SLICER_VERSION}.AppImage && \
+      https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v${SLICER_VERSION}/${SLICER_APPIMAGE} && \
     chmod +x /tmp/orca.AppImage && \
     # Extract AppImage so we don't need FUSE at runtime — much faster startup.
     cd /tmp && ./orca.AppImage --appimage-extract >/dev/null 2>&1 && \
