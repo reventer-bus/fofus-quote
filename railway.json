@@ -5,7 +5,7 @@
     "dockerfilePath": "backend/Dockerfile"
   },
   "deploy": {
-    "startCommand": "node src/server.js",
+    "startCommand": "",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",

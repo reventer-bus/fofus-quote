@@ -58,8 +58,8 @@ COPY package.json ./
 COPY src ./src
 COPY slicer-configs ./slicer-configs
 
-# Persistent volume for jobs DB + uploads + sliced gcode
-VOLUME ["/app/data"]
+# Railway: use Railway Volumes instead of Docker VOLUME directive
+# Create data dirs (Railway volume mounts at /app/data at runtime)
 RUN mkdir -p /app/data/uploads /app/data/sliced
 
 EXPOSE 3000
