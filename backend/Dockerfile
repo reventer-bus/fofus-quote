@@ -9,7 +9,7 @@
 # ── Stage 1: deps ────────────────────────────────────────────────────
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
-COPY package.json package-lock.json* ./
+COPY backend/package.json backend/package-lock.json* ./
 RUN npm ci --omit=dev
 
 # ── Stage 2: runtime ────────────────────────────────────────────────
@@ -54,9 +54,9 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
 # App
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
-COPY package.json ./
-COPY src ./src
-COPY slicer-configs ./slicer-configs
+COPY backend/package.json ./
+COPY backend/src ./src
+COPY backend/slicer-configs ./slicer-configs
 
 # Railway: use Railway Volumes instead of Docker VOLUME directive
 # Create data dirs (Railway volume mounts at /app/data at runtime)
