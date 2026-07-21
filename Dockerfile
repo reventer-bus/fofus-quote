@@ -14,7 +14,7 @@ COPY backend/package.json backend/package-lock.json* ./
 RUN npm ci --omit=dev
 
 # ── Stage 2: runtime ────────────────────────────────────────────────
-FROM debian:bookworm-slim AS runtime
+FROM ubuntu:24.04 AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PORT=3000 \
@@ -23,16 +23,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
     SLICER_VERSION=2.3.1 \
     SLICER_APPIMAGE=OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage
 
-# System deps:
-#   - fuse3/libfuse2: AppImage extraction
-#   - GTK/webkit/alsa/etc: OrcaSlicer runtime
-#   - OpenGL + mesa DRI + xvfb: headless slicing
+# System deps for the Ubuntu 24.04 OrcaSlicer AppImage + headless slicing.
+# libgconf-2-4 was dropped in 24.04 and is not required by this CLI path.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl fuse3 libfuse2 \
     libgtk-3-0 libnss3 libgbm1 libasound2 libxss1 \
     libxshmfence1 libxcomposite1 libxdamage1 libxrandr2 \
     libpango-1.0-0 libcairo2 libcups2 libatk1.0-0 libatk-bridge2.0-0 \
-    libdrm2 libgconf-2-4 libxkbcommon0 fonts-liberation \
+    libdrm2 libxkbcommon0 fonts-liberation \
     libgl1 libgl1-mesa-dri libglx0 libegl1 xvfb xauth \
     libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 libgstreamer-plugins-bad1.0-0 \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
