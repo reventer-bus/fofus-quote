@@ -54,7 +54,7 @@ const FILAMENT_PROFILE = {
 // ── Health ──────────────────────────────────────────────────────────
 export async function slicerHealth() {
   try {
-    const ver = await runOrca(['--help'], { timeoutMs: 5000 });
+    const ver = await runOrca(['--help'], { timeoutMs: 30_000 });
     return {
       ok: true,
       bin: SLICER_BIN,

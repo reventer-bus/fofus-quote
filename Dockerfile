@@ -3,7 +3,7 @@
 # ────────────────────────────────────────────────────────────────────
 # Multi-stage build:
 #   1. Builder:    npm install (backend deps)
-#   2. Runtime:    node + orca-slicer AppImage + FUSE
+#   2. Runtime:    node + orca-slicer AppImage + FUSE + headless X + OpenGL
 # Build context must be the repo root so it can COPY both backend/ and frontend/.
 # ────────────────────────────────────────────────────────────────────
 
@@ -19,21 +19,21 @@ FROM debian:bookworm-slim AS runtime
 ENV DEBIAN_FRONTEND=noninteractive \
     PORT=3000 \
     NODE_ENV=production \
-    SLICER_BIN=/usr/local/bin/orca-slicer \
+    SLICER_BIN=/usr/local/bin/orca-slicer-xvfb \
     SLICER_VERSION=2.3.1 \
     SLICER_APPIMAGE=OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage
 
 # System deps:
-#   - fuse3: required to run the OrcaSlicer AppImage
-#   - libfuse2: AppImage uses libfuse2 (older API)
-#   - libgtk-3-0 / libnss3 / libgbm1: OrcaSlicer GTK runtime
-#   - libssl3 / libcurl4 / ca-certificates: misc
+#   - fuse3/libfuse2: AppImage extraction
+#   - GTK/webkit/alsa/etc: OrcaSlicer runtime
+#   - OpenGL + mesa DRI + xvfb: headless slicing
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl fuse3 libfuse2 \
     libgtk-3-0 libnss3 libgbm1 libasound2 libxss1 \
     libxshmfence1 libxcomposite1 libxdamage1 libxrandr2 \
     libpango-1.0-0 libcairo2 libcups2 libatk1.0-0 libatk-bridge2.0-0 \
     libdrm2 libgconf-2-4 libxkbcommon0 fonts-liberation \
+    libgl1 libgl1-mesa-dri libglx0 libegl1 xvfb xauth \
  && rm -rf /var/lib/apt/lists/*
 
 # Install Node 20 from NodeSource (must match builder stage for native modules)
@@ -53,7 +53,10 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
     # Extract AppImage so we don't need FUSE at runtime — much faster startup.
     cd /tmp && ./orca.AppImage --appimage-extract >/dev/null 2>&1 && \
     mv /tmp/squashfs-root /opt/orca-slicer && \
-    ln -sf /opt/orca-slicer/AppRun ${SLICER_BIN} && \
+    ln -sf /opt/orca-slicer/AppRun /usr/local/bin/orca-slicer && \
+    # Wrap with xvfb-run so the slicer has a headless display in Railway
+    printf '%s\n' '#!/bin/sh' 'exec xvfb-run -a /opt/orca-slicer/AppRun "$@"' > /usr/local/bin/orca-slicer-xvfb && \
+    chmod +x /usr/local/bin/orca-slicer-xvfb && \
     rm -f /tmp/orca.AppImage
 
 # App
