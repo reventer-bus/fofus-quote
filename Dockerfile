@@ -61,7 +61,7 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY backend/package.json ./
 COPY backend/src ./src
-COPY backend/slicer-configs ./slicer-configs
+COPY backend/profiles ./profiles
 COPY frontend ./frontend
 
 # Railway: use Railway Volumes instead of Docker VOLUME directive
