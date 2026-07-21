@@ -58,9 +58,10 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
 # App
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
-COPY backend/package.json ./
-COPY backend/src ./src
-COPY backend/slicer-configs ./slicer-configs
+COPY package.json ./
+COPY src ./src
+COPY slicer-configs ./slicer-configs
+COPY frontend ./frontend
 
 # Railway: use Railway Volumes instead of Docker VOLUME directive
 # Create data dirs (Railway volume mounts at /app/data at runtime)

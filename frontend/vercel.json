@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "framework": null,
   "headers": [
     {
       "source": "/(.*)",
@@ -9,6 +12,5 @@
         { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" }
       ]
     }
-  ],
-  "cleanUrls": true
+  ]
 }

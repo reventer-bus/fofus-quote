@@ -36,8 +36,8 @@ const MATERIALS = {
 };
 const SERVICE_FEE_RATIO = 0.15;  // 15% service markup
 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname.includes('vercel.app'))
-  ? ''  // Vercel preview → same-origin (or set window.FOFUS_API at runtime)
-  : (window.FOFUS_API || 'https://fofus-quote-api.up.railway.app');
+  ? (window.FOFUS_API || 'https://quote.business.fofus.in')  // Vercel preview → Railway backend
+  : '';  // Same origin — backend serves frontend
 
 // ════════════════════════════════════════════════════════════════════
 // STL PARSER (binary)
