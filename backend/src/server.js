@@ -284,8 +284,9 @@ app.post('/api/print-jobs/:id/checkout', async (req, res) => {
     res.json({
       job_id: job.id,
       status: 'awaiting_payment',
-      checkout_url: draft.invoice_url,
-      draft_order_id: draft.draft_order_id,
+      checkout_url: checkout.checkout_url,
+      product_id: checkout.product_id,
+      variant_id: checkout.variant_id,
     });
   } catch (e) {
     console.error('Shopify checkout creation failed:', e);
