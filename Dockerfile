@@ -37,6 +37,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 libgstreamer-plugins-bad1.0-0 \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-pulseaudio libpulse0 \
+    libwebkit2gtk-4.1-0 libjavascriptcoregtk-4.1-0 libsecret-1-0 libsoup-3.0-0 \
+    libayatana-appindicator3-1 libnotify4 \
  && rm -rf /var/lib/apt/lists/*
 
 # Install Node 20 from NodeSource (must match builder stage for native modules)
