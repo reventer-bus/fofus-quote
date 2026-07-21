@@ -315,7 +315,7 @@ app.post('/api/print-jobs/:id/forward', async (req, res) => {
       material: (job.material || 'pla').toUpperCase(),
       weight_g: quote.weight_g || 0,
       print_time_min: quote.minutes || 0,
-      machine: job.printer === 'a1' ? 'BambuA1' : job.printer === 'x1c' ? 'BambuX1C' : 'BambuA1',
+      machine: job.printer === 'a1' ? 'ALA-Standard' : job.printer === 'x1c' ? 'ALA-Engineering' : 'ALA-Standard',
       total_inr: quote.total_inr || 0,
       model_file_path: job.gcode_path || job.stored_path || '',
       notes: `From fofus-quote job ${job.id}. G-code: ${job.gcode_path ? 'yes' : 'no'}`,

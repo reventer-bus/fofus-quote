@@ -38,6 +38,8 @@ function profilePath(kind, name) {
   return path.join(PROFILES_DIR, kind, `${name}.json`);
 }
 
+// Note: customer-facing printer names are ALA-*; the real profiles below are
+// internal OrcaSlicer/BambuStudio profile names required for correct slicing.
 const PRINTER_PROFILE = {
   a1:    process.env.PRINTER_PROFILE_A1   || 'Bambu Lab A1 0.4 nozzle',
   x1c:   process.env.PRINTER_PROFILE_X1C  || 'Bambu Lab X1 Carbon 0.4 nozzle',

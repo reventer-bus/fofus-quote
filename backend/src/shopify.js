@@ -23,9 +23,9 @@ export async function createCheckoutFromJob(job) {
   const hours = quote.hours || (quote.minutes ? quote.minutes / 60 : 0);
   const materialName = (job.material || 'PLA').toUpperCase();
   const printerName = (
-    job.printer === 'a1' ? 'Bambu Lab A1' :
-    job.printer === 'x1c' ? 'Bambu Lab X1 Carbon' :
-    'Creality K1 Max'
+    job.printer === 'a1' ? 'ALA Standard' :
+    job.printer === 'x1c' ? 'ALA Engineering' :
+    'ALA Large'
   );
 
   const title = `Custom 3D Print — ${job.file_name || 'model'}`;

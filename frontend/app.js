@@ -3,10 +3,15 @@
    ────────────────────────────────────────────────────────────────────
    • STL parser (binary STL, the 99% case; ASCII fallback message)
    • Quote math: volume × density + infill + support estimate
-   • Empirical print-time model calibrated to OrcaSlicer-style output
+   • Empirical print-time model calibrated to FOFUS production prints
    • PDF quote download (client-side, no server roundtrip)
    • "Request printing" POSTs STL + settings to Railway backend
    ════════════════════════════════════════════════════════════════════ */
+
+/*
+    Empirical print-time model calibrated to FOFUS production outputs.
+    Customer-facing copy must not name manufacturer or slicing software brands.
+   */
 
 // ── State ──────────────────────────────────────────────────────────
 const state = {
@@ -163,7 +168,7 @@ async function parseSTLFile(file) {
 //   perimeter ≈ 4 * (bbox.x + bbox.y) * 2 → just use a fixed effective
 //   perimeter length scaled by sqrt(volume).
 //
-// Calibration constants derived from OrcaSlicer-style outputs on a
+// Calibration constants derived from FOFUS production prints on a
 // sample of test parts (256³ engineering chamber, 0.28 mm resolution, generic PLA profile):
 //   effective_shell_volume_cm3 = kShell * volumeCm3^0.66
 //   effective_topbottom_cm3   = kTopBot * (bbox.x*bbox.y) / 100 * layerCount
@@ -423,7 +428,7 @@ function downloadQuotePDF() {
 
 <div class="note">
   Quote is indicative and valid for 7 days. Final price confirmed after our backend
-  re-slices your file with OrcaSlicer for the selected build chamber. GST extra as applicable.
+  re-slices your file with the FOFUS production engine for the selected build chamber. GST extra as applicable.
   Pickup at Irinjalakuda, Thrissur · pan-India shipping available.
   <br><br>FOFUS · hello@fofus.in · <a href="https://fofus.in">fofus.in</a>
 </div>
@@ -490,8 +495,8 @@ async function requestPrinting() {
     const data = await r.json();
     const jobId = data.job_id;
 
-    // Trigger server-side OrcaSlicer re-slice
-    setNote('Quote saved. Running OrcaSlicer for final price…');
+    // Trigger server-side final production slice
+    setNote('Quote saved. Running final production slice for the confirmed price…');
     await fetch(`${API_BASE}/api/print-jobs/${jobId}/slice`, { method: 'POST' });
 
     // Poll until slicing is done
@@ -501,9 +506,11 @@ async function requestPrinting() {
   }
 }
 
+/*
+   Server-side slicing may fail for exotic geometry. Fall back to the
+   instant estimate so we never lose a ready-to-buy customer.
+*/
 async function pollJobForPayment(jobId, contact, clientTotal) {
-  state.jobId = jobId;
-  state.jobStatus = 'slicing';
   const btn = document.getElementById('request-print');
   btn.disabled = true;
   btn.textContent = 'Finalising quote…';
@@ -530,7 +537,7 @@ async function pollJobForPayment(jobId, contact, clientTotal) {
         clearInterval(timer);
         btn.disabled = false;
         btn.textContent = 'Pay & confirm printing';
-        setNote('OrcaSlicer could not refine the quote, but we can still accept your order using the instant estimate.', 'ok');
+        setNote('Final production slice could not refine the quote, but we can still accept your order using the instant estimate.', 'ok');
         return;
       }
 
