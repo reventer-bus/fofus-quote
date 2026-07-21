@@ -34,6 +34,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpango-1.0-0 libcairo2 libcups2 libatk1.0-0 libatk-bridge2.0-0 \
     libdrm2 libgconf-2-4 libxkbcommon0 fonts-liberation \
     libgl1 libgl1-mesa-dri libglx0 libegl1 xvfb xauth \
+    libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 libgstreamer-plugins-bad1.0-0 \
+    gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-pulseaudio libpulse0 \
  && rm -rf /var/lib/apt/lists/*
 
 # Install Node 20 from NodeSource (must match builder stage for native modules)
