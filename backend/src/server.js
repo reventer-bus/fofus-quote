@@ -17,6 +17,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { initDb, createJob, getJob, listJobs, updateJob } from './db.js';
 import { sliceWithOrca, slicerHealth } from './slicer.js';
 import { buildFinalQuote, parseGcodeFooter } from './quote.js';
+import { createCheckoutFromJob } from './shopify.js';
+import { notifyNewQuote } from './notify.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.resolve(__dirname, '..', 'data');
@@ -229,6 +231,66 @@ app.get('/api/print-jobs/:id/file', async (req, res) => {
   const filePath = kind === 'original' ? job.stored_path : job.gcode_path;
   if (!filePath) return res.status(404).json({ error: `${kind} not available` });
   res.download(filePath);
+});
+
+// ── Forward accepted quote to Shopify draft order ───────────────────
+app.post('/api/print-jobs/:id/checkout', async (req, res) => {
+  const job = getJob(db, req.params.id);
+  if (!job) return res.status(404).json({ error: 'not found' });
+
+  // Update contact details if provided
+  const contact = req.body.contact || {};
+  if (contact.name || contact.phone || contact.pincode || contact.email || contact.notes) {
+    updateJob(db, job.id, {
+      contact_name: contact.name || job.contact_name,
+      contact_phone: contact.phone || job.contact_phone,
+      contact_email: contact.email || job.contact_email,
+      pincode: contact.pincode || job.pincode,
+      notes: contact.notes || job.notes,
+    });
+    Object.assign(job, {
+      contact_name: contact.name || job.contact_name,
+      contact_phone: contact.phone || job.contact_phone,
+      contact_email: contact.email || job.contact_email,
+      pincode: contact.pincode || job.pincode,
+      notes: contact.notes || job.notes,
+    });
+  }
+
+  // Validate minimum contact info
+  if (!job.contact_name || !job.contact_phone || !job.pincode) {
+    return res.status(400).json({ error: 'name, phone and pincode are required' });
+  }
+
+  const quote = job.final_quote || job.client_quote || {};
+  const total = Math.round(quote.total_inr || quote.total || 0);
+  if (!total || total < 50) {
+    return res.status(400).json({ error: 'quote total missing or too low' });
+  }
+
+  try {
+    const checkout = await createCheckoutFromJob(job);
+    updateJob(db, job.id, {
+      status: 'awaiting_payment',
+      shopify_product_id: checkout.product_id,
+      shopify_variant_id: checkout.variant_id,
+      shopify_invoice_url: checkout.checkout_url,
+      notes: (job.notes || '') + `\nShopify product: ${checkout.product_id}`,
+    });
+
+    // Notify operations team
+    notifyNewQuote(job).catch(e => console.error('notify failed', e));
+
+    res.json({
+      job_id: job.id,
+      status: 'awaiting_payment',
+      checkout_url: draft.invoice_url,
+      draft_order_id: draft.draft_order_id,
+    });
+  } catch (e) {
+    console.error('Shopify checkout creation failed:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Forward accepted quote to PrintDash (creates an order) ──────────

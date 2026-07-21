@@ -19,6 +19,8 @@ const state = {
   layerHeight: 0.28,
   supports: 'auto', // 'auto' | 'none'
   quote: null,      // last computed quote (used by PDF + submit)
+  jobId: null,      // backend job id
+  jobStatus: null,  // 'queued' | 'slicing' | 'sliced' | 'slice_failed' | 'awaiting_payment'
 };
 
 // ── Constants ──────────────────────────────────────────────────────
@@ -441,6 +443,10 @@ async function requestPrinting() {
   if (!state.quote || !state.file) {
     setNote('Upload a file and wait for a quote first.', 'err'); return;
   }
+  const contact = getContact();
+  const err = validateContact(contact);
+  if (err) { setNote(err, 'err'); return; }
+
   const q = state.quote;
   const g = state.geometry;
   const prn = PRINTERS[state.printer];
@@ -449,7 +455,6 @@ async function requestPrinting() {
   const payload = {
     file_name: state.file.name,
     file_size: state.file.size,
-    // Base64 the STL if small enough so backend can re-slice without a separate upload step
     file_base64: state.fileBuf ? _arrayBufferToBase64(state.fileBuf) : null,
     geometry: g,
     printer: state.printer,
@@ -467,9 +472,10 @@ async function requestPrinting() {
       machine_cost: q.machineCost,
       service_fee: q.serviceFee,
       total: q.total,
+      total_inr: q.total,
     },
-    // Customer details collected at backend checkout (out of scope for v1 frontend)
-    contact: null,
+    contact,
+    notes: contact.notes || '',
     requested_at: new Date().toISOString(),
   };
 
@@ -482,24 +488,100 @@ async function requestPrinting() {
     });
     if (!r.ok) throw new Error(`Backend returned ${r.status}`);
     const data = await r.json();
-    setNote(`Job queued: ${data.job_id || 'OK'}. We'll email you a final OrcaSlicer-validated quote and payment link within 1 hour.`, 'ok');
+    const jobId = data.job_id;
+
+    // Trigger server-side OrcaSlicer re-slice
+    setNote('Quote saved. Running OrcaSlicer for final price…');
+    await fetch(`${API_BASE}/api/print-jobs/${jobId}/slice`, { method: 'POST' });
+
+    // Poll until slicing is done
+    pollJobForPayment(jobId, contact, q.total);
   } catch (e) {
-    // Backend not yet deployed → don't lose the request. Fall back to a mailto.
-    const subject = encodeURIComponent(`FOFUS 3D print job — ${state.file.name}`);
-    const body = encodeURIComponent(
-      `Hi FOFUS,\n\nI'd like to proceed with the quote on your site.\n\n` +
-      `File: ${state.file.name} (${(state.file.size/1024/1024).toFixed(2)} MB)\n` +
-      `Build chamber: ${prn.name}\nMaterial: ${mat.name}\n` +
-      `Infill: ${state.infill}%  Resolution: ${state.layerHeight} mm  Supports: ${state.supports}\n\n` +
-      `Quote (instant estimate):\n` +
-      `  Print time: ${fmt.hrs(q.totalMinutes)}\n` +
-      `  Weight: ${q.weightG.toFixed(1)} g\n` +
-      `  Total: ${fmt.inr(q.total)}\n\n` +
-      `My details:\nName:\nPhone:\nDelivery pincode:\n\nThanks!`
-    );
-    setNote(`Couldn't reach the print queue backend (${e.message}). Email us instead — link opened with your quote pre-filled.`, 'err');
-    window.location.href = `mailto:hello@fofus.in?subject=${subject}&body=${body}`;
+    fallbackToMailto(contact, q, prn, mat);
   }
+}
+
+async function pollJobForPayment(jobId, contact, clientTotal) {
+  state.jobId = jobId;
+  state.jobStatus = 'slicing';
+  const btn = document.getElementById('request-print');
+  btn.disabled = true;
+  btn.textContent = 'Finalising quote…';
+
+  let attempts = 0;
+  const maxAttempts = 60; // ~5 minutes
+  const timer = setInterval(async () => {
+    attempts++;
+    try {
+      const r = await fetch(`${API_BASE}/api/print-jobs/${jobId}`);
+      if (!r.ok) return;
+      const job = await r.json();
+      state.jobStatus = job.status;
+
+      if (job.status === 'sliced') {
+        clearInterval(timer);
+        btn.disabled = false;
+        btn.textContent = 'Pay & confirm printing';
+        setNote('Final quote ready. Click "Pay & confirm printing" to complete your order.', 'ok');
+        return;
+      }
+
+      if (job.status === 'slice_failed') {
+        clearInterval(timer);
+        btn.disabled = false;
+        btn.textContent = 'Pay & confirm printing';
+        setNote('OrcaSlicer could not refine the quote, but we can still accept your order using the instant estimate.', 'ok');
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(timer);
+        btn.disabled = false;
+        btn.textContent = 'Pay & confirm printing';
+        setNote('Slicing is taking longer than usual. Continue with the instant estimate?', 'ok');
+      }
+    } catch (e) {
+      // ignore polling errors, keep trying
+    }
+  }, 5000);
+}
+
+async function createCheckout(jobId, fallbackTotal) {
+  const contact = getContact();
+  const err = validateContact(contact);
+  if (err) { setNote(err, 'err'); return; }
+
+  setNote('Creating Shopify checkout…');
+  try {
+    const r = await fetch(`${API_BASE}/api/print-jobs/${jobId}/checkout`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ contact }),
+    });
+    if (!r.ok) throw new Error(`Backend returned ${r.status}`);
+    const data = await r.json();
+    setNote('Redirecting to secure payment…', 'ok');
+    window.location.href = data.checkout_url;
+  } catch (e) {
+    setNote(`Checkout failed: ${e.message}. We'll email you a payment link instead.`, 'err');
+  }
+}
+
+function fallbackToMailto(contact, q, prn, mat) {
+  const subject = encodeURIComponent(`FOFUS 3D print job — ${state.file.name}`);
+  const body = encodeURIComponent(
+    `Hi FOFUS,\n\nI'd like to proceed with the quote on your site.\n\n` +
+    `File: ${state.file.name} (${(state.file.size/1024/1024).toFixed(2)} MB)\n` +
+    `Printer: ${prn.name}\nMaterial: ${mat.name}\n` +
+    `Infill: ${state.infill}%  Layer: ${state.layerHeight} mm  Supports: ${state.supports}\n\n` +
+    `Quote (instant estimate):\n` +
+    `  Print time: ${fmt.hrs(q.totalMinutes)}\n` +
+    `  Weight: ${q.weightG.toFixed(1)} g\n` +
+    `  Total: ${fmt.inr(q.total)}\n\n` +
+    `Name: ${contact.name}\nPhone: ${contact.phone}\nEmail: ${contact.email || ''}\nPincode: ${contact.pincode}\nNotes: ${contact.notes || ''}\n\nThanks!`
+  );
+  setNote(`Couldn't reach the print queue backend. Email us instead — link opened with your quote pre-filled.`, 'err');
+  window.location.href = `mailto:hello@fofus.in?subject=${subject}&body=${body}`;
 }
 
 function _arrayBufferToBase64(buf) {
@@ -565,5 +647,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Actions
   document.getElementById('download-quote').addEventListener('click', downloadQuotePDF);
-  document.getElementById('request-print').addEventListener('click', requestPrinting);
+  document.getElementById('request-print').addEventListener('click', () => {
+    if (state.jobId && (state.jobStatus === 'sliced' || state.jobStatus === 'slice_failed' || state.jobStatus === 'awaiting_payment')) {
+      createCheckout(state.jobId, state.quote?.total || 0);
+    } else {
+      requestPrinting();
+    }
+  });
 });

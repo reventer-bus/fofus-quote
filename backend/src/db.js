@@ -31,7 +31,12 @@ export function initDb(filePath) {
       -- audit
       slice_log       TEXT,
       created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-      sliced_at       TEXT
+      sliced_at       TEXT,
+      -- shopify integration
+      shopify_draft_order_id TEXT,
+      shopify_product_id    TEXT,
+      shopify_variant_id    TEXT,
+      shopify_invoice_url    TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON print_jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_created ON print_jobs(created_at DESC);
@@ -94,6 +99,7 @@ export function updateJob(db, id, patch) {
   const allowed = [
     'status','gcode_path','slice_log','sliced_at','final_quote',
     'contact_name','contact_email','contact_phone','pincode','notes',
+    'shopify_draft_order_id','shopify_product_id','shopify_variant_id','shopify_invoice_url',
   ];
   const sets = [];
   const args = [];
