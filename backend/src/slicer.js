@@ -53,17 +53,22 @@ const FILAMENT_PROFILE = {
 
 // ── Health ──────────────────────────────────────────────────────────
 export async function slicerHealth() {
+  // Don't actually launch OrcaSlicer here: launching the AppImage + Xvfb
+  // just for --help is heavy and can hang the event loop. Presence + exec
+  // permission of the binary and profiles is enough.
   try {
-    const ver = await runOrca(['--help'], { timeoutMs: 30_000 });
+    await fs.access(SLICER_BIN, fs.constants.F_OK | fs.constants.X_OK);
+    await fs.access(PROFILES_DIR, fs.constants.F_OK | fs.constants.R_OK);
     return {
       ok: true,
       bin: SLICER_BIN,
-      version_hint: ver.stdout.slice(0, 200),
+      profiles_dir: PROFILES_DIR,
     };
   } catch (e) {
     return {
       ok: false,
       bin: SLICER_BIN,
+      profiles_dir: PROFILES_DIR,
       error: e.message,
     };
   }
