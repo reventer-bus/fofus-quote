@@ -41,6 +41,13 @@ export function initDb(filePath) {
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON print_jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_created ON print_jobs(created_at DESC);
   `);
+
+  // Migrations: add columns that were introduced after v1
+  try { db.exec(`ALTER TABLE print_jobs ADD COLUMN shopify_draft_order_id TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE print_jobs ADD COLUMN shopify_product_id    TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE print_jobs ADD COLUMN shopify_variant_id    TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE print_jobs ADD COLUMN shopify_invoice_url    TEXT`); } catch {}
+
   return db;
 }
 
