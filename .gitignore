@@ -3,3 +3,5 @@ data/
 payload.json
 .vercel
 .env*
+__pycache__/
+*.pyc
