@@ -27,7 +27,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # libgconf-2-4 was dropped in 24.04 and is not required by this CLI path.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl fuse3 libfuse2 \
-    libgtk-3-0 libnss3 libgbm1 libasound2 libxss1 \
+    libgtk-3-0 libnss3 libgbm1 libasound2t64 libxss1 \
     libxshmfence1 libxcomposite1 libxdamage1 libxrandr2 \
     libpango-1.0-0 libcairo2 libcups2 libatk1.0-0 libatk-bridge2.0-0 \
     libdrm2 libxkbcommon0 fonts-liberation \
