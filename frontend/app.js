@@ -23,9 +23,9 @@ const state = {
 
 // ── Constants ──────────────────────────────────────────────────────
 const PRINTERS = {
-  a1:   { name: 'Bambu Lab A1',         ratePerHr: 35, buildMm: 256 },
-  x1c:  { name: 'Bambu Lab X1 Carbon',  ratePerHr: 50, buildMm: 256 },
-  k1max:{ name: 'Creality K1 Max',      ratePerHr: 45, buildMm: 300 },
+  a1:   { name: 'Standard 256³ chamber',   ratePerHr: 35, buildMm: 256 },
+  x1c:  { name: 'Engineering 256³ chamber', ratePerHr: 50, buildMm: 256 },
+  k1max:{ name: 'Large 300³ chamber',      ratePerHr: 45, buildMm: 300 },
 };
 const MATERIALS = {
   pla:  { name: 'PLA',  ratePerG: 2.5,  densityGcm3: 1.24, speed: 1.00 },
@@ -162,7 +162,7 @@ async function parseSTLFile(file) {
 //   perimeter length scaled by sqrt(volume).
 //
 // Calibration constants derived from OrcaSlicer-style outputs on a
-// sample of test parts (Bambu X1C, 0.28 layer, generic PLA profile):
+// sample of test parts (256³ engineering chamber, 0.28 mm resolution, generic PLA profile):
 //   effective_shell_volume_cm3 = kShell * volumeCm3^0.66
 //   effective_topbottom_cm3   = kTopBot * (bbox.x*bbox.y) / 100 * layerCount
 function computeQuote() {
@@ -258,16 +258,36 @@ function renderQuote() {
   document.getElementById('q-weight').textContent = `${q.weightG.toFixed(1)} g`;
   document.getElementById('q-mat-label').textContent = `Material (${mat.name} · ${state.infill}% infill)`;
   document.getElementById('q-mat-cost').textContent = fmt.inr(q.materialCost);
-  document.getElementById('q-mach-label').textContent = `Machine (${prn.name})`;
+  document.getElementById('q-mach-label').textContent = `Build chamber (${prn.buildMm}³)`;
   document.getElementById('q-mach-cost').textContent = fmt.inr(q.machineCost);
   document.getElementById('q-service').textContent = fmt.inr(q.serviceFee);
   document.getElementById('q-total').textContent = fmt.inr(q.total);
+
+  // Show contact form once quote is ready
+  document.getElementById('contact-form').hidden = false;
 
   // Build-volume fit check (axis-aligned; real check needs OBB rotation)
   const b = g.bbox;
   const fitWarn = document.getElementById('fit-warn');
   const oversize = (b.x > prn.buildMm) || (b.y > prn.buildMm) || (b.z > prn.buildMm);
   fitWarn.hidden = !oversize;
+}
+
+// Collect customer contact details from the form
+function getContact() {
+  const name = document.getElementById('c-name')?.value.trim() || '';
+  const phone = document.getElementById('c-phone')?.value.trim() || '';
+  const email = document.getElementById('c-email')?.value.trim() || '';
+  const pincode = document.getElementById('c-pincode')?.value.trim() || '';
+  const notes = document.getElementById('c-notes')?.value.trim() || '';
+  return { name, phone, email, pincode, notes };
+}
+
+function validateContact(c) {
+  if (!c.name) return 'Please enter your name.';
+  if (!c.phone || c.phone.length < 10) return 'Please enter a valid phone number.';
+  if (!c.pincode || c.pincode.length < 6) return 'Please enter a valid pincode.';
+  return null;
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -377,10 +397,10 @@ function downloadQuotePDF() {
 </div>
 
 <table>
-  <tr><th>Printer</th><td>${prn.name} (${prn.buildMm}³ build)</td></tr>
+  <tr><th>Build chamber</th><td>${prn.name} (${prn.buildMm}³ build)</td></tr>
   <tr><th>Material</th><td>${mat.name}</td></tr>
   <tr><th>Infill</th><td>${state.infill}%</td></tr>
-  <tr><th>Layer height</th><td>${state.layerHeight} mm</td></tr>
+  <tr><th>Resolution</th><td>${state.layerHeight} mm</td></tr>
   <tr><th>Supports</th><td>${state.supports === 'auto' ? 'Auto-generated' : 'None'}</td></tr>
   <tr><th>Print time</th><td>${fmt.hrs(q.totalMinutes)}</td></tr>
   <tr><th>Weight</th><td>${q.weightG.toFixed(1)} g</td></tr>
@@ -388,7 +408,7 @@ function downloadQuotePDF() {
 
 <table>
   <tr><th>Material cost</th><td>${fmt.inr(q.materialCost)}</td></tr>
-  <tr><th>Machine time (${prn.name})</th><td>${fmt.inr(q.machineCost)}</td></tr>
+  <tr><th>Machine time (${prn.buildMm}³ chamber)</th><td>${fmt.inr(q.machineCost)}</td></tr>
   <tr><th>Service fee (${(SERVICE_FEE_RATIO*100)}%)</th><td>${fmt.inr(q.serviceFee)}</td></tr>
 </table>
 
@@ -401,7 +421,7 @@ function downloadQuotePDF() {
 
 <div class="note">
   Quote is indicative and valid for 7 days. Final price confirmed after our backend
-  re-slices your file with OrcaSlicer for the selected printer. GST extra as applicable.
+  re-slices your file with OrcaSlicer for the selected build chamber. GST extra as applicable.
   Pickup at Irinjalakuda, Thrissur · pan-India shipping available.
   <br><br>FOFUS · hello@fofus.in · <a href="https://fofus.in">fofus.in</a>
 </div>
@@ -469,8 +489,8 @@ async function requestPrinting() {
     const body = encodeURIComponent(
       `Hi FOFUS,\n\nI'd like to proceed with the quote on your site.\n\n` +
       `File: ${state.file.name} (${(state.file.size/1024/1024).toFixed(2)} MB)\n` +
-      `Printer: ${prn.name}\nMaterial: ${mat.name}\n` +
-      `Infill: ${state.infill}%  Layer: ${state.layerHeight} mm  Supports: ${state.supports}\n\n` +
+      `Build chamber: ${prn.name}\nMaterial: ${mat.name}\n` +
+      `Infill: ${state.infill}%  Resolution: ${state.layerHeight} mm  Supports: ${state.supports}\n\n` +
       `Quote (instant estimate):\n` +
       `  Print time: ${fmt.hrs(q.totalMinutes)}\n` +
       `  Weight: ${q.weightG.toFixed(1)} g\n` +

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FOFUS Quote — Instant 3D Printing Estimates</title>
-<meta name="description" content="Upload an STL, pick a printer and material, get an instant 3D printing quote from FOFUS — Kerala's 3D manufacturing ecosystem.">
+<meta name="description" content="Upload an STL, pick a build chamber and material, get an instant 3D printing quote from FOFUS — Kerala's 3D manufacturing ecosystem.">
 <meta property="og:title" content="FOFUS Quote — Instant 3D Printing Estimates">
 <meta property="og:description" content="Upload STL → instant quote → ship to printer. Real OrcaSlicer-backed estimates.">
 <meta property="og:type" content="website">
@@ -24,7 +24,7 @@
   </a>
   <div class="nav-links">
     <a href="#how">How it works</a>
-    <a href="#machines">Machines</a>
+    <a href="#machines">Chambers</a>
     <a href="#materials">Materials</a>
     <a class="nav-cta" href="#quote">Get a quote</a>
   </div>
@@ -34,7 +34,7 @@
 <section class="brandbar">
   <div class="brand-eyebrow">3D PRINTING · KERALA · ON-DEMAND</div>
   <h1 class="brand-h1">From <em>STL</em> to shipped part — <em>in minutes.</em></h1>
-  <p class="brand-sub">Upload your model. Pick a printer and filament. See your cost instantly. We slice it with OrcaSlicer, ship it from Thrissur.</p>
+  <p class="brand-sub">Upload your model. Pick a build chamber and filament. See your cost instantly. We slice it with OrcaSlicer, ship it from Thrissur.</p>
   <div class="hero-cta-row">
     <a class="p1-cta" href="#quote">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
@@ -47,16 +47,16 @@
 <!-- ── TICKER (machine strip, copied from fofus.in) ───── -->
 <div class="ticker-wrap">
   <div class="ticker-track">
-    <span class="ti">BAMBU LAB A1 · ₹35/HR · 256³ BUILD</span>
-    <span class="ti">BAMBU LAB X1 CARBON · ₹50/HR · 256³ BUILD</span>
-    <span class="ti">CREALITY K1 MAX · ₹45/HR · 300³ BUILD</span>
+    <span class="ti">STANDARD CHAMBER · 256³ MM · ₹35/HR</span>
+    <span class="ti">ENGINEERING CHAMBER · 256³ MM · ₹50/HR</span>
+    <span class="ti">LARGE CHAMBER · 300³ MM · ₹45/HR</span>
     <span class="ti">PLA · PETG · ABS · TPU · PA-CF</span>
     <span class="ti">SLICED WITH ORCASLICER · LOCAL THrissur PRINTS</span>
     <span class="ti">FASTEST QUOTE IN KERALA · 30 SECONDS END-TO-END</span>
     <!-- duplicate for seamless loop -->
-    <span class="ti">BAMBU LAB A1 · ₹35/HR · 256³ BUILD</span>
-    <span class="ti">BAMBU LAB X1 CARBON · ₹50/HR · 256³ BUILD</span>
-    <span class="ti">CREALITY K1 MAX · ₹45/HR · 300³ BUILD</span>
+    <span class="ti">STANDARD CHAMBER · 256³ MM · ₹35/HR</span>
+    <span class="ti">ENGINEERING CHAMBER · 256³ MM · ₹50/HR</span>
+    <span class="ti">LARGE CHAMBER · 300³ MM · ₹45/HR</span>
     <span class="ti">PLA · PETG · ABS · TPU · PA-CF</span>
     <span class="ti">SLICED WITH ORCASLICER · LOCAL THrissur PRINTS</span>
     <span class="ti">FASTEST QUOTE IN KERALA · 30 SECONDS END-TO-END</span>
@@ -80,8 +80,8 @@
     <div class="svc-item">
       <div class="svc-icon-col">02</div>
       <div class="svc-text">
-        <div class="svc-name">Pick a printer and material</div>
-        <div class="svc-desc">Bambu A1, X1 Carbon, Creality K1 Max. PLA, PETG, ABS, TPU, engineering blends. Set infill and quality. We check the build volume fits before you commit.</div>
+        <div class="svc-name">Pick a build chamber and material</div>
+        <div class="svc-desc">Three chamber sizes: Standard 256³, Engineering 256³, Large 300³. PLA, PETG, ABS, TPU, engineering blends. Set infill and resolution. We check the build volume fits before you commit.</div>
       </div>
     </div>
     <div class="svc-item">
@@ -139,19 +139,19 @@
         </div>
 
         <div class="field">
-          <label class="field-label">Printer</label>
+          <label class="field-label">Build chamber</label>
           <div class="picker" id="printer-picker">
             <button type="button" class="pick" data-printer="a1" data-rate="35" data-vol="256">
-              <span class="pick-name">Bambu Lab A1</span>
-              <span class="pick-rate">₹35/hr · 256³</span>
+              <span class="pick-name">Standard chamber</span>
+              <span class="pick-rate">256³ mm · ₹35/hr</span>
             </button>
             <button type="button" class="pick selected" data-printer="x1c" data-rate="50" data-vol="256">
-              <span class="pick-name">Bambu Lab X1C</span>
-              <span class="pick-rate">₹50/hr · 256³</span>
+              <span class="pick-name">Engineering chamber</span>
+              <span class="pick-rate">256³ mm · ₹50/hr</span>
             </button>
             <button type="button" class="pick" data-printer="k1max" data-rate="45" data-vol="300">
-              <span class="pick-name">Creality K1 Max</span>
-              <span class="pick-rate">₹45/hr · 300³</span>
+              <span class="pick-name">Large chamber</span>
+              <span class="pick-rate">300³ mm · ₹45/hr</span>
             </button>
           </div>
         </div>
@@ -174,7 +174,7 @@
 
         <div class="field-row">
           <div class="field">
-            <label class="field-label">Layer height</label>
+            <label class="field-label">Resolution</label>
             <div class="picker picker-tight" id="layer-picker">
               <button type="button" class="pick lh" data-lh="0.20">0.20</button>
               <button type="button" class="pick lh selected" data-lh="0.28">0.28</button>
@@ -207,7 +207,7 @@
           <div class="quote-row"><span>Print time</span><span id="q-time">—</span></div>
           <div class="quote-row"><span>Weight</span><span id="q-weight">—</span></div>
           <div class="quote-row"><span id="q-mat-label">Material (PLA · 20%)</span><span id="q-mat-cost">—</span></div>
-          <div class="quote-row"><span id="q-mach-label">Machine (X1C)</span><span id="q-mach-cost">—</span></div>
+          <div class="quote-row"><span id="q-mach-label">Build chamber (256³)</span><span id="q-mach-cost">—</span></div>
           <div class="quote-row"><span>Service fee</span><span id="q-service">—</span></div>
 
           <div class="quote-divider"></div>
@@ -218,7 +218,33 @@
           </div>
 
           <div id="fit-warn" class="fit-warn" hidden>
-            ⚠ Model is larger than the selected printer's build volume.
+            ⚠ Model is larger than the selected build chamber.
+          </div>
+
+          <!-- Contact details for quote request -->
+          <div class="contact-form" id="contact-form" hidden>
+            <div class="field">
+              <label class="field-label" for="c-name">Name *</label>
+              <input type="text" id="c-name" class="text-input" placeholder="Your name" required>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label" for="c-phone">Phone *</label>
+                <input type="tel" id="c-phone" class="text-input" placeholder="+91..." required>
+              </div>
+              <div class="field">
+                <label class="field-label" for="c-email">Email</label>
+                <input type="email" id="c-email" class="text-input" placeholder="you@example.com">
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="c-pincode">Delivery pincode *</label>
+              <input type="text" id="c-pincode" class="text-input" placeholder="680XXX" required>
+            </div>
+            <div class="field">
+              <label class="field-label" for="c-notes">Notes (optional)</label>
+              <textarea id="c-notes" class="text-input" rows="2" placeholder="Quantity, color, finish, deadline..."></textarea>
+            </div>
           </div>
 
           <div class="quote-actions">
@@ -236,14 +262,14 @@
 
 <!-- ── MACHINES / MATERIALS ────────────────────────────── -->
 <section class="sec p1" id="machines">
-  <div class="sec-eyebrow sec-eyebrow-gold">FLEET</div>
-  <h2 class="sec-headline">The <em>machines.</em></h2>
-  <p class="sec-sub">Three core workhorses, picked by job. A1 for cheap PLA. X1 Carbon for engineering. K1 Max for big beds.</p>
+  <div class="sec-eyebrow sec-eyebrow-gold">CHAMBERS</div>
+  <h2 class="sec-headline">The <em>chambers.</em></h2>
+  <p class="sec-sub">Three build chambers, picked by job. Standard for everyday PLA, Engineering for high-temp filaments, Large for big single parts.</p>
 
   <div class="machine-grid">
     <div class="machine-card">
-      <div class="machine-tag">Bambu Lab A1</div>
-      <div class="machine-name">High-volume PLA workhorse</div>
+      <div class="machine-tag">Standard chamber</div>
+      <div class="machine-name">Reliable everyday prints</div>
       <div class="machine-specs">
         <div><span>Build</span><b>256 × 256 × 256 mm</b></div>
         <div><span>Rate</span><b>₹35 / hr</b></div>
@@ -252,8 +278,8 @@
       </div>
     </div>
     <div class="machine-card">
-      <div class="machine-tag">Bambu Lab X1 Carbon</div>
-      <div class="machine-name">Engineering filament specialist</div>
+      <div class="machine-tag">Engineering chamber</div>
+      <div class="machine-name">High-temp engineering materials</div>
       <div class="machine-specs">
         <div><span>Build</span><b>256 × 256 × 256 mm</b></div>
         <div><span>Rate</span><b>₹50 / hr</b></div>
@@ -262,8 +288,8 @@
       </div>
     </div>
     <div class="machine-card">
-      <div class="machine-tag">Creality K1 Max</div>
-      <div class="machine-name">Large-bed jobs</div>
+      <div class="machine-tag">Large chamber</div>
+      <div class="machine-name">Big single-part prints</div>
       <div class="machine-specs">
         <div><span>Build</span><b>300 × 300 × 300 mm</b></div>
         <div><span>Rate</span><b>₹45 / hr</b></div>
@@ -305,7 +331,7 @@
     <div>
       <div class="foot-h">Quote</div>
       <a href="#quote">Get instant quote</a>
-      <a href="#machines">Machines</a>
+      <a href="#machines">Chambers</a>
       <a href="#materials">Materials</a>
     </div>
     <div>

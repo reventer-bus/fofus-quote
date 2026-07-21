@@ -356,6 +356,38 @@ nav{
   font-size:11px;letter-spacing:.04em;margin-bottom:14px;
 }
 .quote-actions{display:flex;flex-direction:column;gap:8px}
+
+/* ── CONTACT FORM ── */
+.contact-form{
+  margin-top:18px;
+  padding:16px;
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  border-radius:10px;
+}
+.contact-form .field{margin-bottom:12px}
+.contact-form .field:last-child{margin-bottom:0}
+.text-input,
+textarea.text-input{
+  width:100%;
+  background:var(--panel);
+  border:1px solid var(--border2);
+  border-radius:8px;
+  padding:10px 12px;
+  color:var(--white);
+  font-family:var(--sans);
+  font-size:13px;
+  outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.text-input:focus,
+textarea.text-input:focus{
+  border-color:var(--gold);
+  box-shadow:0 0 0 2px rgba(201,160,99,.15);
+}
+textarea.text-input{resize:vertical;min-height:52px}
+.contact-form .field-row .field{margin-bottom:12px}
+
 .quote-note{
   margin-top:14px;padding:10px 14px;
   background:var(--bg);border:1px solid var(--border);
