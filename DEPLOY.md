@@ -1,172 +1,98 @@
 # Deploy guide — FOFUS Quote
 
-End-to-end: from this repo to a live site at `qoute.custom.fofus.in`.
+End-to-end: from this repo to a live site at `quote.business.fofus.in`.
 
-Two services, two providers:
-- **Vercel** hosts the frontend (`/`)
-- **Railway** hosts the backend (Docker)
-
-The frontend calls the backend over CORS. Both get a free tier — should
-cost $0/month at low traffic.
-
----
-
-## 0. Prereqs (one-time)
-
-```bash
-# GitHub CLI (auth needed to push code)
-gh auth login         # follow prompts, choose HTTPS, browser auth
-```
-
----
+Single-origin on **Railway**. The Express backend serves both the static
+frontend and the API from the same domain, so there is no CORS and only one
+host to manage. Vercel is no longer used for this service.
 
 ## 1. Push to GitHub
 
 ```bash
-cd C:/Users/Fofus/websites/fofus-quote
-gh repo create fofus-quote --public --source=. --remote=origin --push
+cd /home/reventer/work/fofus-quote
+git add . && git commit -m "init" && git push
 ```
 
-If `gh repo create` says the repo exists, do:
-```bash
-git remote add origin https://github.com/<your-username>/fofus-quote.git
-git push -u origin main
-```
-
-The repo includes ~2000 Bambu Studio system profile JSONs (machine +
-process + filament) which the OrcaSlicer CLI needs to slice real parts.
-That's expected and required.
-
----
-
-## 2. Deploy backend to Railway (~10 min)
+## 2. Railway deploy
 
 1. https://railway.app/new → **Deploy from GitHub repo** → pick `fofus-quote`
-2. **Settings → Root Directory** = `backend` (so Railway builds `backend/Dockerfile`)
-3. Railway auto-builds. First build is ~5 min (OrcaSlicer AppImage is ~200 MB).
-4. Railway gives you a URL like `https://fofus-quote-backend-production.up.railway.app`
-5. **Variables**: add `ADMIN_TOKEN=***` (any random string)
-6. **Networking → Generate Domain** if not auto-public
+2. Railway uses the repo-root `Dockerfile` (configured in `railway.json`)
+3. First build is ~8–10 min: it downloads the ~200 MB OrcaSlicer AppImage and installs Ubuntu 24.04 GUI libs.
+4. Add a **volume** mounted at `/app/data` so jobs/uploaded models/gcode persist across deploys.
+5. Add env var `ADMIN_TOKEN=***` (random string) for the admin list endpoint.
+6. Generate or set custom domain `quote.business.fofus.in` in Railway **Networking**.
+7. In GoDaddy DNS add a **CNAME** `quote` → `wj7vscgg.up.railway.app` (or whatever Railway gives you).
 
 ### Verify
-```bash
-curl https://<your-url>/api/health
-# {"status":"ok",...}
 
-curl https://<your-url>/api/slicer/check
-# {"ok":true,"bin":"/usr/local/bin/orca-slicer",...}
+```bash
+curl https://quote.business.fofus.in/              # should return HTML
+curl https://quote.business.fofus.in/api/health   # {"status":"ok",...}
+curl https://quote.business.fofus.in/api/slicer/check
+# {"ok":true,"bin":"/usr/local/bin/orca-slicer-xvfb","profiles_dir":"/app/profiles"}
 ```
 
-### End-to-end smoke test against Railway
+### End-to-end smoke test
+
 ```bash
-node -e "
-const fs = require('fs');
-const buf = fs.readFileSync('C:/Users/Fofus/Desktop/fofus.stl');
-fetch('https://<your-url>/api/print-jobs', {
-  method:'POST', headers:{'content-type':'application/json'},
-  body: JSON.stringify({
-    file_name:'fofus.stl', file_size:buf.length,
-    file_base64: buf.toString('base64'),
-    printer:'x1c', material:'pla', infill:20, layer_height:0.28, supports:'auto',
-    quote:{weight_g:3.4, minutes:4, total:14}
-  })
-}).then(r=>r.json()).then(j=>{
-  console.log('queued:', j.job_id);
-  return fetch('https://<your-url>/api/print-jobs/'+j.job_id+'/slice', {method:'POST'});
-}).then(r=>r.json()).then(console.log);
-"
-# Wait ~30s, then:
-curl https://<your-url>/api/print-jobs/<JOB_ID>
-# Look for status:"sliced", gcode_path set, final_quote.source:"slicer"
+python3 -c "
+import base64, json, os
+stl = open('/tmp/cube10mm.stl','rb').read()
+body = json.dumps({
+    'file_name':'cube10mm.stl', 'file_size':len(stl),
+    'file_base64': base64.b64encode(stl).decode(),
+    'printer':'x1c', 'material':'pla', 'infill':20,
+    'layer_height':0.28, 'supports':'auto',
+    'quote':{'weight_g':3.4,'minutes':4,'total':14},
+    'contact':{'name':'Test','email':'test@fofus.in','phone':'','pincode':'680001'}
+})
+print(body)
+" > /tmp/quote_payload.json
+
+JOB=$(curl -sS -X POST -H 'Content-Type: application/json' -d @/tmp/quote_payload.json \
+  https://quote.business.fofus.in/api/print-jobs | python3 -c 'import json,sys; print(json.load(sys.stdin)["job_id"])')
+
+curl -sS -X POST https://quote.business.fofus.in/api/print-jobs/$JOB/slice
+
+# Wait ~30-60s, then:
+curl -sS https://quote.business.fofus.in/api/print-jobs/$JOB | python3 -m json.tool
+# Expect status:"sliced", final_quote.source:"slicer", gcode_path set.
 ```
 
----
-
-## 3. Deploy frontend to Vercel (~2 min)
-
-1. https://vercel.com/new → **Import Git Repository** → `fofus-quote`
-2. **Root Directory** = `frontend`
-3. **Framework Preset** = Other
-4. **Environment Variables**: `FOFUS_API` = `https://<your-railway-url>` (no trailing slash)
-5. **Deploy**
-
-Visit `https://fofus-quote-xxx.vercel.app` — should see the dark+gold FOFUS Quote page.
-Upload `C:/Users/Fofus/Desktop/fofus.stl` — instant quote + "Request Printing" → backend POSTs.
-
----
-
-## 4. Custom domain: qoute.custom.fofus.in
-
-In Vercel → **Settings → Domains** → add `qoute.custom.fofus.in`. Vercel shows the
-CNAME target. Add DNS:
-
-- **CNAME** `qoute` → `cname.vercel-dns.com`
-  (or A record to `76.76.21.21` if your DNS doesn't support CNAME on subdomains)
-
-For `api.qoute.custom.fofus.in` → Railway:
-- Railway → **Networking → Custom Domain** → `api.qoute.custom.fofus.in`
-- CNAME `api` → Railway-provided target
-
----
-
-## 5. Update flow after changes
+## 3. Update flow after changes
 
 ```bash
 git add . && git commit -m "..." && git push
-# Railway + Vercel auto-deploy. Done.
+# Railway auto-deploys. No Vercel step.
 ```
 
----
-
-## 6. Where things live
+## 4. Where things live
 
 | What                | Where                                       |
 |---------------------|---------------------------------------------|
-| Frontend source     | `C:/Users/Fofus/websites/fofus-quote/frontend/` |
-| Backend source      | `C:/Users/Fofus/websites/fofus-quote/backend/`  |
-| Backend logs        | Railway dashboard → Logs                   |
-| Job database        | Railway volume → `/app/data/jobs.db`        |
-| Uploaded STL files  | Railway volume → `/app/data/uploads/`       |
-| Sliced gcode        | Railway volume → `/app/data/sliced/`        |
+| Frontend source     | `frontend/`                                 |
+| Backend source      | `backend/`                                  |
+| Production image    | `Dockerfile` (repo root)                    |
+| Railway config      | `railway.json`                              |
+| Backend logs        | Railway dashboard → Logs                    |
+| Job database        | Railway volume → `/app/data/jobs.db`          |
+| Uploaded STL files  | Railway volume → `/app/data/uploads/`         |
+| Sliced gcode        | Railway volume → `/app/data/sliced/`          |
 
----
+## 5. Cost
 
-## 7. Cost
+At low traffic the Railway container sits above the $5/mo minimum because the
+image is heavy. Budget ~$5–10/mo for the quote service.
 
-At low traffic (< 1000 quotes/day):
-- **Vercel**: $0 (free hobby tier)
-- **Railway**: $5/mo minimum (the $5 covers ~500 hrs of the small container;
-  OrcaSlicer image is heavy so idle hours matter)
+## 6. Headless slicing notes
 
-To bring Railway cost to $0, swap Dockerfile → fly.toml and use Fly.io's free
-allowance — same Dockerfile works as-is.
+The Dockerfile uses:
+- `ubuntu:24.04` runtime so the Ubuntu 24.04 OrcaSlicer AppImage gets GLIBC 2.38+
+- `xvfb-run -a` wrapper (`/usr/local/bin/orca-slicer-xvfb`) so OrcaSlicer has a virtual X display
+- GTK / WebKit / GStreamer / OpenGL libs required by the AppImage
 
----
+The backend copies `backend/profiles` into `/app/profiles`; these are the
+process/machine/filament overrides OrcaSlicer needs.
 
-## 8. Architecture quirks (read this if you change the slicer)
-
-The OrcaSlicer CLI has 5 surprising behaviors the backend handles:
-
-1. **`.ini` files are JSON.** Despite the extension, OrcaSlicer parses them
-   via `load_from_json`. Use JSON, not INI format.
-
-2. **No `--export-gcode` flag.** Gcode goes to `<outputdir>/gcode/<stem>.gcode`
-   automatically. Or, if the slicer is given a "plate", to `<outputdir>/plate_N.gcode`.
-   Use a recursive scan as fallback.
-
-3. **No `--no-save` flag.** Just don't pass it.
-
-4. **CLI validator is overly strict.** OrcaSlicer 2.3.1 has `is_BBL_printer()`
-   declared in `Print.hpp:977` but never assigned anywhere — it defaults to false.
-   Result: even when slicing a Bambu printer, the `Print.cpp:1407` validator
-   demands `G92 E0` in `layer_change_gcode` or `before_layer_change_gcode`.
-   Inject it manually in `slicer.js buildSettingsJson`.
-
-5. **Process + machine profiles both needed.** Pass `--load-settings <process.json>`
-   AND `--load-settings <machine.json>` together. Pass only one → "process not
-   compatible with printer".
-
-6. **Filament time is in header, filament weight is in footer.** Read both ends
-   in `quote.js parseGcodeFooter` to populate weight + time.
-
-If you need to bring Railway cost to $0, swap Dockerfile → fly.toml and use Fly.io's free allowance.
+If the AppImage fails to launch, read the job `slice_log` from
+`/api/print-jobs/:id` — it surfaces the exact `ldd`-style error.
