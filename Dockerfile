@@ -1,9 +1,10 @@
 # ────────────────────────────────────────────────────────────────────
-# FOFUS Quote backend — Dockerfile for Railway
+# FOFUS Quote backend — Dockerfile for Railway (repo-root build context)
 # ────────────────────────────────────────────────────────────────────
 # Multi-stage build:
-#   1. Builder:    npm install
+#   1. Builder:    npm install (backend deps)
 #   2. Runtime:    node + orca-slicer AppImage + FUSE
+# Build context must be the repo root so it can COPY both backend/ and frontend/.
 # ────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: deps ────────────────────────────────────────────────────
@@ -58,9 +59,9 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
 # App
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
-COPY package.json ./
-COPY src ./src
-COPY slicer-configs ./slicer-configs
+COPY backend/package.json ./
+COPY backend/src ./src
+COPY backend/slicer-configs ./slicer-configs
 COPY frontend ./frontend
 
 # Railway: use Railway Volumes instead of Docker VOLUME directive

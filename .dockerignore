@@ -1,0 +1,13 @@
+node_modules/
+backend/node_modules/
+data/*.db
+data/*.db-journal
+uploads/
+*.log
+.env
+.env.local
+.DS_Store
+tests/
+README.md
+.vercel/
+.git/
