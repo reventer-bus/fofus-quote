@@ -38,7 +38,7 @@ const MATERIALS = {
   pla:    { name: 'PLA',     ratePerG: 2.5,  densityGcm3: 1.24, speed: 1.00 },
   petg:   { name: 'PETG',    ratePerG: 3.5,  densityGcm3: 1.27, speed: 0.90 },
   abs:    { name: 'ABS',     ratePerG: 5.0,  densityGcm3: 1.04, speed: 0.85 },
-  silicon:{ name: 'Silicon', ratePerG: 8.0,  densityGcm3: 1.20, speed: 0.60 },
+  silicon:{ name: 'Silicon', ratePerG: 20.0, densityGcm3: 1.20, speed: 0.60 },
   fibre:  { name: 'Fibre',   ratePerG: 10.0, densityGcm3: 1.30, speed: 0.70 },
 };
 const SERVICE_FEE_RATIO = 0.15;  // 15% service markup
