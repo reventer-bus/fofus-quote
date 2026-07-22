@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FOFUS Quote — Instant 3D Printing Estimates</title>
-<meta name="description" content="Upload an STL, pick a build chamber and material, get an instant 3D printing quote from FOFUS — Kerala's 3D manufacturing ecosystem.">
+<meta name="description" content="Upload your STL, 3MF or OBJ file. Pick a material and resolution. Get an instant 3D printing quote from FOFUS — Kerala's 3D manufacturing ecosystem.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://quote.business.fofus.in/">
 <meta property="og:title" content="FOFUS Quote — Instant 3D Printing Estimates">
-<meta property="og:description" content="Upload STL → instant quote → ship to printer. Real FOFUS slicing engine, calibrated against production prints.">
+<meta property="og:description" content="Upload STL, 3MF or OBJ → instant quote → ship to printer. Real FOFUS slicing engine, calibrated against production prints.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://quote.business.fofus.in/">
 <meta property="og:site_name" content="FOFUS Quote">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="FOFUS Quote — Instant 3D Printing Estimates">
-<meta name="twitter:description" content="Upload STL → instant quote → ship to printer. Real FOFUS slicing engine, calibrated against production prints.">
+<meta name="twitter:description" content="Upload STL, 3MF or OBJ → instant quote → ship to printer. Real FOFUS slicing engine, calibrated against production prints.">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebSite","name":"FOFUS Quote","url":"https://quote.business.fofus.in/","description":"Instant 3D printing estimates from FOFUS"}
 </script>
@@ -40,37 +40,41 @@
 <a href="#machines">Chambers</a>
 <a href="#materials">Materials</a>
 <a class="nav-cta" href="#quote">Get a quote</a>
+<button class="theme-toggle" id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle theme">
+  <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+</button>
 </div>
 </nav>
 
 <!-- ── HERO ────────────────────────────────────────────── -->
 <section class="brandbar">
 <div class="brand-eyebrow">3D PRINTING · KERALA · ON-DEMAND</div>
-<h1 class="brand-h1">From <em>STL</em> to shipped part — <em>in minutes.</em></h1>
-<p class="brand-sub">Upload your model. Pick a build chamber and filament. See your cost instantly. We slice it with the FOFUS production engine, ship it from Thrissur.</p>
+<h1 class="brand-h1">Upload your file. <em>Get a quote in seconds.</em></h1>
+<p class="brand-sub">Drop in your STL, 3MF or OBJ file. Choose your material and quality. See your price instantly — no signup, no waiting. We print and ship from Thrissur, Kerala.</p>
 <div class="hero-cta-row">
     <a class="p1-cta" href="#quote">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-      Upload your STL
+      Upload your file
     </a>
     <a class="ghost-cta" href="#how">How it works</a>
   </div>
 </section>
 
-<!-- ── TICKER (machine strip, copied from fofus.in) ───── -->
+<!-- ── TICKER ─────────────────────────────────────────── -->
 <div class="ticker-wrap">
   <div class="ticker-track">
     <span class="ti">STANDARD CHAMBER · 256³ MM · ₹35/HR</span>
     <span class="ti">ENGINEERING CHAMBER · 256³ MM · ₹50/HR</span>
     <span class="ti">LARGE CHAMBER · 300³ MM · ₹45/HR</span>
-    <span class="ti">PLA · PETG · ABS · TPU · PA-CF</span>
+    <span class="ti">PLA · PETG · ABS · SILICON · FIBRE</span>
     <span class="ti">SLICED WITH FOFUS ENGINE · LOCAL THRISSUR PRINTS</span>
     <span class="ti">FASTEST QUOTE IN KERALA · 30 SECONDS END-TO-END</span>
     <!-- duplicate for seamless loop -->
     <span class="ti">STANDARD CHAMBER · 256³ MM · ₹35/HR</span>
     <span class="ti">ENGINEERING CHAMBER · 256³ MM · ₹50/HR</span>
     <span class="ti">LARGE CHAMBER · 300³ MM · ₹45/HR</span>
-    <span class="ti">PLA · PETG · ABS · TPU · PA-CF</span>
+    <span class="ti">PLA · PETG · ABS · SILICON · FIBRE</span>
     <span class="ti">SLICED WITH FOFUS ENGINE · LOCAL THRISSUR PRINTS</span>
     <span class="ti">FASTEST QUOTE IN KERALA · 30 SECONDS END-TO-END</span>
   </div>
@@ -80,21 +84,21 @@
 <section class="sec p1" id="how">
   <div class="sec-eyebrow sec-eyebrow-gold">PROCESS</div>
   <h2 class="sec-headline">Three steps. <em>One quote.</em></h2>
-  <p class="sec-sub">No signup. No waiting. No email back-and-forth. Drag in your file, choose your machine, see the price.</p>
+  <p class="sec-sub">No signup. No waiting. No email back-and-forth. Drag in your file, choose your material, see the price.</p>
 
   <div class="svc-list">
     <div class="svc-item">
       <div class="svc-icon-col">01</div>
       <div class="svc-text">
         <div class="svc-name">Upload your 3D file</div>
-        <div class="svc-desc">STL, OBJ or 3MF. We read the geometry right in your browser — nothing leaves until you confirm. Max 100 MB.</div>
+        <div class="svc-desc">STL, 3MF or OBJ. We read the geometry right in your browser — nothing leaves until you confirm. Max 100 MB.</div>
       </div>
     </div>
     <div class="svc-item">
       <div class="svc-icon-col">02</div>
       <div class="svc-text">
-        <div class="svc-name">Pick a build chamber and material</div>
-        <div class="svc-desc">Three chamber sizes: Standard 256³, Engineering 256³, Large 300³. PLA, PETG, ABS, TPU, engineering blends. Set infill and resolution. We check the build volume fits before you commit.</div>
+        <div class="svc-name">Pick your material and quality</div>
+        <div class="svc-desc">Choose from PLA, PETG, ABS, Silicon (mold-cast), or Fibre-coated (PETG + resin + fibre for automobile parts). Set infill and resolution from 0.08 mm (ultra-fine) to 0.40 mm (draft). We check the build volume fits before you commit.</div>
       </div>
     </div>
     <div class="svc-item">
@@ -112,7 +116,7 @@
   <div class="p2-inner">
     <div class="sec-eyebrow sec-eyebrow-steel">QUOTE ENGINE</div>
     <h2 class="sec-headline">Get your <em>instant quote.</em></h2>
-    <p class="sec-sub">Volume and bounding box are computed in your browser from the STL. Print time uses an empirical model calibrated against FOFUS production prints. The number you see is what we charge.</p>
+    <p class="sec-sub">Volume and bounding box are computed in your browser from the file. Print time uses an empirical model calibrated against FOFUS production prints. The number you see is what we charge.</p>
 
     <div class="quote-grid">
 
@@ -124,12 +128,12 @@
         </div>
 
         <label class="dropzone" id="dropzone" for="stl-input">
-          <input type="file" id="stl-input" accept=".stl,.obj,.3mf" hidden>
+          <input type="file" id="stl-input" accept=".stl,.3mf,.obj" hidden>
           <div class="dz-icon">
             <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v12M6 9l6-6 6 6M3 21h18"/></svg>
           </div>
           <div class="dz-text">
-            <strong>Drop STL, OBJ or 3MF here</strong>
+            <strong>Drop your STL, 3MF or OBJ here</strong>
             <span>or click to browse · max 100 MB</span>
           </div>
           <div class="dz-file" id="dz-file" hidden>
@@ -175,8 +179,8 @@
             <button type="button" class="pick mat selected" data-mat="pla"  data-rate="2.5">PLA · ₹2.5/g</button>
             <button type="button" class="pick mat" data-mat="petg" data-rate="3.5">PETG · ₹3.5/g</button>
             <button type="button" class="pick mat" data-mat="abs"  data-rate="3.0">ABS · ₹3.0/g</button>
-            <button type="button" class="pick mat" data-mat="tpu"  data-rate="6.0">TPU · ₹6.0/g</button>
-            <button type="button" class="pick mat" data-mat="pacf" data-rate="12.0">PA-CF · ₹12/g</button>
+            <button type="button" class="pick mat" data-mat="silicon" data-rate="8.0">Silicon · ₹8.0/g</button>
+            <button type="button" class="pick mat" data-mat="fibre" data-rate="10.0">Fibre · ₹10/g</button>
           </div>
         </div>
 
@@ -187,10 +191,13 @@
 
         <div class="field-row">
           <div class="field">
-            <label class="field-label">Resolution</label>
-            <div class="picker picker-tight" id="layer-picker">
-              <button type="button" class="pick lh" data-lh="0.20">0.20</button>
-              <button type="button" class="pick lh selected" data-lh="0.28">0.28</button>
+            <label class="field-label">Resolution (mm)</label>
+            <div class="picker picker-resolution" id="layer-picker">
+              <button type="button" class="pick lh" data-lh="0.08">0.08</button>
+              <button type="button" class="pick lh" data-lh="0.12">0.12</button>
+              <button type="button" class="pick lh" data-lh="0.16">0.16</button>
+              <button type="button" class="pick lh selected" data-lh="0.20">0.20</button>
+              <button type="button" class="pick lh" data-lh="0.28">0.28</button>
               <button type="button" class="pick lh" data-lh="0.40">0.40</button>
             </div>
           </div>
@@ -287,17 +294,17 @@
         <div><span>Build</span><b>256 × 256 × 256 mm</b></div>
         <div><span>Rate</span><b>₹35 / hr</b></div>
         <div><span>Speed</span><b>500 mm/s</b></div>
-        <div><span>Best for</span><b>PLA, PETG, TPU</b></div>
+        <div><span>Best for</span><b>PLA, PETG</b></div>
       </div>
     </div>
     <div class="machine-card">
       <div class="machine-tag">Engineering chamber</div>
-      <div class="machine-name">High-temp engineering materials</div>
+      <div class="machine-name">High-temp & special materials</div>
       <div class="machine-specs">
         <div><span>Build</span><b>256 × 256 × 256 mm</b></div>
         <div><span>Rate</span><b>₹50 / hr</b></div>
         <div><span>Speed</span><b>500 mm/s</b></div>
-        <div><span>Best for</span><b>ABS, ASA, PA-CF, PC</b></div>
+        <div><span>Best for</span><b>ABS, Silicon molds, Fibre parts</b></div>
       </div>
     </div>
     <div class="machine-card">
@@ -315,22 +322,35 @@
 
 <section class="sec p2" id="materials">
   <div class="p2-inner">
-    <div class="sec-eyebrow sec-eyebrow-indigo">FILAMENTS</div>
+    <div class="sec-eyebrow sec-eyebrow-indigo">MATERIALS</div>
     <h2 class="sec-headline">The <em>materials.</em></h2>
-    <p class="sec-sub">Stock filaments priced by the gram. PA-CF and other engineering blends cost more — the price you see is the price we pay.</p>
+    <p class="sec-sub">Choose the right material for your application. Silicon and Fibre options use multi-step processes — the price you see includes all steps.</p>
 
     <table class="mat-table">
       <thead>
-        <tr><th>Material</th><th>₹ / gram</th><th>Notes</th></tr>
+        <tr><th>Material</th><th>₹ / gram</th><th>Process</th><th>Best for</th></tr>
       </thead>
       <tbody>
-        <tr><td><b>PLA</b></td><td>₹2.50</td><td>Easiest, biodegradable, vibrant colors</td></tr>
-        <tr><td><b>PETG</b></td><td>₹3.50</td><td>Tough, slight flex, food-safe options</td></tr>
-        <tr><td><b>ABS</b></td><td>₹3.00</td><td>Heat-resistant; needs enclosure</td></tr>
-        <tr><td><b>TPU</b></td><td>₹6.00</td><td>Flexible, rubber-like, slow print</td></tr>
-        <tr><td><b>PA-CF</b></td><td>₹12.00</td><td>Carbon-fiber nylon, engineering grade</td></tr>
+        <tr><td><b>PLA</b></td><td>₹2.50</td><td>Direct FDM print</td><td>Decor, gifts, prototypes — vibrant colors, biodegradable</td></tr>
+        <tr><td><b>PETG</b></td><td>₹3.50</td><td>Direct FDM print</td><td>Tough parts, slight flex, food-safe options</td></tr>
+        <tr><td><b>ABS</b></td><td>₹3.00</td><td>Direct FDM print</td><td>Heat-resistant parts, enclosure required</td></tr>
+        <tr><td><b>Silicon</b></td><td>₹8.00</td><td>Print mold → cast silicon</td><td>Flexible parts, gaskets, custom seals, skin-safe products</td></tr>
+        <tr><td><b>Fibre</b></td><td>₹10.00</td><td>PETG print + resin & fibre coating</td><td>Automobile parts, structural components, impact-resistant</td></tr>
       </tbody>
     </table>
+
+    <div class="mat-info-cards">
+      <div class="mat-info-card">
+        <div class="mat-info-icon">🧪</div>
+        <div class="mat-info-title">Silicon Parts</div>
+        <div class="mat-info-desc">We 3D print a precise mold of your part, then cast food-grade or skin-safe silicon into it. Ideal for gaskets, custom seals, soft-touch grips, and medical/skin-safe applications.</div>
+      </div>
+      <div class="mat-info-card">
+        <div class="mat-info-icon">🚗</div>
+        <div class="mat-info-title">Fibre-Reinforced Parts</div>
+        <div class="mat-info-desc">We print your part in PETG for dimensional accuracy, then coat it with industrial resin and fibre layers for strength. Ideal for automobile brackets, covers, and structural components that need impact resistance.</div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -353,7 +373,7 @@
       <a href="mailto:hello@fofus.in">hello@fofus.in</a>
     </div>
   </div>
-  <div class="foot-bottom">© 2026 FOFUS · Quote engine v0.1 · Built in Thrissur</div>
+  <div class="foot-bottom">© 2026 FOFUS · Quote engine v0.2 · Built in Thrissur</div>
 </footer>
 
 <script src="app.js"></script>

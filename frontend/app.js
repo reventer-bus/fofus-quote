@@ -19,9 +19,9 @@ const state = {
   fileBuf: null,
   geometry: null,   // { volumeCm3, bbox: {x,y,z}, triangles }
   printer: 'x1c',   // 'a1' | 'x1c' | 'k1max'
-  material: 'pla',  // 'pla' | 'petg' | 'abs' | 'tpu' | 'pacf'
+  material: 'pla',  // 'pla' | 'petg' | 'abs' | 'silicon' | 'fibre'
   infill: 20,
-  layerHeight: 0.28,
+  layerHeight: 0.20,
   supports: 'auto', // 'auto' | 'none'
   quote: null,      // last computed quote (used by PDF + submit)
   jobId: null,      // backend job id
@@ -35,11 +35,11 @@ const PRINTERS = {
   k1max:{ name: 'Large 300³ chamber',      ratePerHr: 45, buildMm: 300 },
 };
 const MATERIALS = {
-  pla:  { name: 'PLA',  ratePerG: 2.5,  densityGcm3: 1.24, speed: 1.00 },
-  petg: { name: 'PETG', ratePerG: 3.5,  densityGcm3: 1.27, speed: 0.90 },
-  abs:  { name: 'ABS',  ratePerG: 3.0,  densityGcm3: 1.04, speed: 0.85 },
-  tpu:  { name: 'TPU',  ratePerG: 6.0,  densityGcm3: 1.21, speed: 0.50 },
-  pacf: { name: 'PA-CF',ratePerG: 12.0, densityGcm3: 1.15, speed: 0.65 },
+  pla:    { name: 'PLA',     ratePerG: 2.5,  densityGcm3: 1.24, speed: 1.00 },
+  petg:   { name: 'PETG',    ratePerG: 3.5,  densityGcm3: 1.27, speed: 0.90 },
+  abs:    { name: 'ABS',     ratePerG: 3.0,  densityGcm3: 1.04, speed: 0.85 },
+  silicon:{ name: 'Silicon', ratePerG: 8.0,  densityGcm3: 1.20, speed: 0.60 },
+  fibre:  { name: 'Fibre',   ratePerG: 10.0, densityGcm3: 1.30, speed: 0.70 },
 };
 const SERVICE_FEE_RATIO = 0.15;  // 15% service markup
 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname.includes('vercel.app'))
@@ -205,11 +205,9 @@ function computeQuote() {
   const weightG = totalFilamentCm3 * mat.densityGcm3;
 
   // 6. Print time. Empirical model:
-  //    base print speed 200 mm³/s at 0.28 layer, scaled by layer height & material speed
+  //    base print speed scaled by layer height & material speed
   //    overhead = setup + travel (~3-8 min baseline + 0.5 min per 100 g filament)
-  const speedMm3PerSec = 16 * (lh / 0.28) * mat.speed * 200 / 16;
-  // Simpler form: 60 mm³/s per mm of layer height for the actual material profile
-  const effRate = (lh / 0.28) * 12 * mat.speed;  // cm³/min — empirically tuned
+  const effRate = (lh / 0.20) * 12 * mat.speed;  // cm³/min — empirically tuned to 0.20 baseline
   const printMinutes = totalFilamentCm3 / effRate;
   const overheadMinutes = 4 + (weightG / 100) * 1.2;
   const totalMinutes = printMinutes + overheadMinutes;
@@ -660,5 +658,19 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       requestPrinting();
     }
+  });
+
+  // Theme toggle — dark/light mode
+  const themeToggle = document.getElementById('theme-toggle');
+  // Restore saved theme or default to dark
+  const savedTheme = localStorage.getItem('fofus-quote-theme');
+  if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  }
+  themeToggle.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('fofus-quote-theme', next);
   });
 });
