@@ -3,6 +3,11 @@
   "buildCommand": null,
   "outputDirectory": ".",
   "framework": null,
+  "routes": [
+    { "src": "^/robots\\.txt$", "dest": "/robots.txt", "headers": { "Content-Type": "text/plain" } },
+    { "src": "^/sitemap\\.xml$", "dest": "/sitemap.xml", "headers": { "Content-Type": "application/xml" } },
+    { "src": "^/[a-f0-9]{32}\\.txt$", "dest": "/$0", "headers": { "Content-Type": "text/plain" } }
+  ],
   "headers": [
     {
       "source": "/(.*)",

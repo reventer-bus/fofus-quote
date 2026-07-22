@@ -53,18 +53,26 @@ app.get('/api/health', (_req, res) => res.json({
 const FRONTEND_DIR = path.resolve(__dirname, '..', 'frontend');
 app.use(express.static(FRONTEND_DIR));
 
+// ── Explicit SEO / crawlability files (must not be swallowed by catch-all SPA route) ──
+app.get('/robots.txt', (_req, res) => {
+  res.type('text/plain').sendFile(path.join(FRONTEND_DIR, 'robots.txt'));
+});
+app.get('/sitemap.xml', (_req, res) => {
+  res.type('application/xml').sendFile(path.join(FRONTEND_DIR, 'sitemap.xml'));
+});
+
 // ── Root → frontend index.html ──────────────────────────────────────
 app.get('/', (_req, res) => {
   const indexFile = path.join(FRONTEND_DIR, 'index.html');
-  try {
-    res.sendFile(indexFile);
-  } catch {
-    res.json({
-      service: 'fofus-quote-backend',
-      version: '0.1.0',
-      docs: 'https://github.com/reventer-bus/fofus-quote',
-    });
-  }
+  res.sendFile(indexFile, (err) => {
+    if (err) {
+      res.json({
+        service: 'fofus-quote-backend',
+        version: '0.1.0',
+        docs: 'https://github.com/reventer-bus/fofus-quote',
+      });
+    }
+  });
 });
 
 // ── Slicer health ───────────────────────────────────────────────────
