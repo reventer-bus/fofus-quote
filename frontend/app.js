@@ -22,6 +22,7 @@ const state = {
   infill: 20,
   layerHeight: 0.20,
   supports: 'auto', // 'auto' | 'tree' | 'none'
+  scale: 1.0,       // model scale factor (0.25 – 3.0)
   postProc: new Set(),
   quote: null,      // last computed quote
   jobId: null,
@@ -204,7 +205,7 @@ function initViewer(vertices) {
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.computeVertexNormals();
 
-  // Center and scale model
+  // Center and scale model to fit viewer
   geometry.computeBoundingBox();
   const bbox = geometry.boundingBox;
   const center = new THREE.Vector3();
@@ -212,9 +213,9 @@ function initViewer(vertices) {
   const size = new THREE.Vector3();
   bbox.getSize(size);
   const maxDim = Math.max(size.x, size.y, size.z);
-  const scale = maxDim > 0 ? 100 / maxDim : 1;
+  const fitScale = maxDim > 0 ? 100 / maxDim : 1;
   geometry.translate(-center.x, -center.y, -center.z);
-  geometry.scale(scale, scale, scale);
+  geometry.scale(fitScale * state.scale, fitScale * state.scale, fitScale * state.scale);
 
   // Material
   const material = new THREE.MeshPhongMaterial({
@@ -294,30 +295,35 @@ function computeQuote() {
   const prn = PRINTERS[state.printer];
   const mat = MATERIALS[state.material];
   const lh  = state.layerHeight;
+  const sc  = state.scale;
 
   // Custom materials — no instant estimate
   if (mat.custom) {
     return { custom: true };
   }
 
+  // Apply scale: volume scales cubic, bbox linear
+  const volCm3  = g.volumeCm3  * sc * sc * sc;
+  const bbox    = { x: g.bbox.x * sc, y: g.bbox.y * sc, z: g.bbox.z * sc };
+
   // 1. Shell volume
   const kShell = 0.85;
-  const shellVolCm3 = kShell * Math.pow(g.volumeCm3, 0.66);
+  const shellVolCm3 = kShell * Math.pow(volCm3, 0.66);
 
   // 2. Top + bottom skin volume
   const topBotLayers = 8;
   const topAreaCm2 = Math.min(
-    (g.bbox.x/10) * (g.bbox.y/10),
-    Math.pow(g.volumeCm3, 2/3)
+    (bbox.x/10) * (bbox.y/10),
+    Math.pow(volCm3, 2/3)
   );
   const topBotVolCm3 = topAreaCm2 * lh * topBotLayers / 10;
 
   // 3. Infill volume
-  const infillVolCm3 = Math.max(0, g.volumeCm3 - shellVolCm3 - topBotVolCm3) * (state.infill / 100);
+  const infillVolCm3 = Math.max(0, volCm3 - shellVolCm3 - topBotVolCm3) * (state.infill / 100);
 
   // 4. Support material estimate
   const supportFactor = state.supports === 'auto' ? 0.10 : state.supports === 'tree' ? 0.06 : 0.0;
-  const supportVolCm3 = g.volumeCm3 * supportFactor;
+  const supportVolCm3 = volCm3 * supportFactor;
 
   // 5. Total filament volume + weight
   const totalFilamentCm3 = shellVolCm3 + topBotVolCm3 + infillVolCm3 + supportVolCm3;
@@ -462,8 +468,8 @@ function renderQuote() {
   // Show contact form
   document.getElementById('contact-form').hidden = false;
 
-  // Build-volume fit check
-  const b = g.bbox;
+  // Build-volume fit check (uses scaled bbox)
+  const b = { x: g.bbox.x * state.scale, y: g.bbox.y * state.scale, z: g.bbox.z * state.scale };
   const fitWarn = document.getElementById('fit-warn');
   const oversize = (b.x > prn.buildMm) || (b.y > prn.buildMm) || (b.z > prn.buildMm);
   fitWarn.hidden = !oversize;
@@ -524,6 +530,9 @@ async function handleFile(file) {
     document.getElementById('stat-bbox').textContent = `${geom.bbox.x.toFixed(1)} × ${geom.bbox.y.toFixed(1)} × ${geom.bbox.z.toFixed(1)} mm`;
     document.getElementById('stat-tris').textContent = geom.triangles.toLocaleString('en-IN');
 
+    // Update scale hint with original dimensions
+    updateScaleHint();
+
     // Show and init 3D viewer
     document.getElementById('viewer-wrap').hidden = false;
     if (geom.vertices && geom.vertices.length > 0) {
@@ -564,6 +573,7 @@ function sendWhatsAppQuote() {
   msg += `Build chamber: ${prn.name}\n`;
   msg += `Infill: ${state.infill}%\n`;
   msg += `Resolution: ${state.layerHeight} mm\n`;
+  msg += `Scale: ${Math.round(state.scale*100)}%\n`;
   msg += `Supports: ${state.supports}\n`;
 
   // Post-processing
@@ -660,6 +670,7 @@ function downloadQuotePDF() {
   <tr><th>Colour</th><td>${colour}</td></tr>
   <tr><th>Infill</th><td>${state.infill}%</td></tr>
   <tr><th>Resolution</th><td>${state.layerHeight} mm</td></tr>
+  <tr><th>Scale</th><td>${Math.round(state.scale*100)}%</td></tr>
   <tr><th>Supports</th><td>${state.supports === 'auto' ? 'Auto-generated' : state.supports === 'tree' ? 'Tree supports' : 'None'}</td></tr>
   <tr><th>Print time</th><td>${fmt.hrs(q.totalMinutes)}</td></tr>
   <tr><th>Weight</th><td>${q.weightG.toFixed(1)} g</td></tr>
@@ -739,6 +750,7 @@ async function requestPrinting() {
     colour: state.colour,
     infill: state.infill,
     layer_height: state.layerHeight,
+    scale: state.scale,
     supports: state.supports,
     post_processing: [...state.postProc],
     quote: q.custom ? null : {
@@ -856,7 +868,7 @@ function fallbackToMailto(contact, q, prn, mat) {
     `Hi FOFUS,\n\nI'd like to proceed with the estimate on your site.\n\n` +
     `File: ${state.file.name} (${(state.file.size/1024/1024).toFixed(2)} MB)\n` +
     `Printer: ${prn.name}\nMaterial: ${mat.name}\nColour: ${colour}\n` +
-    `Infill: ${state.infill}%  Layer: ${state.layerHeight} mm  Supports: ${state.supports}\n` +
+    `Infill: ${state.infill}%  Layer: ${state.layerHeight} mm  Scale: ${Math.round(state.scale*100)}%  Supports: ${state.supports}\n` +
     `Post-processing: ${ppStr}\n\n` +
     `Estimate (instant):\n` +
     (q.custom ? `  Custom quote required\n` :
@@ -875,6 +887,36 @@ function _arrayBufferToBase64(buf) {
     bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
   }
   return btoa(bin);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SCALE HELPER
+// ════════════════════════════════════════════════════════════════════
+function updateScaleHint() {
+  if (!state.geometry) return;
+  const sc = state.scale;
+  const g = state.geometry;
+  const sx = (g.bbox.x * sc).toFixed(1);
+  const sy = (g.bbox.y * sc).toFixed(1);
+  const sz = (g.bbox.z * sc).toFixed(1);
+  const hint = document.getElementById('scale-hint');
+  if (!hint) return;
+  if (sc === 1) {
+    hint.textContent = 'Original size';
+  } else {
+    hint.textContent = `${sx} × ${sy} × ${sz} mm`;
+  }
+  // Update displayed volume too
+  const volEl = document.getElementById('stat-volume');
+  if (volEl) {
+    const scaledVol = g.volumeCm3 * sc * sc * sc;
+    volEl.textContent = fmt.cm3(scaledVol);
+  }
+  // Update displayed bbox
+  const bboxEl = document.getElementById('stat-bbox');
+  if (bboxEl) {
+    bboxEl.textContent = `${sx} × ${sy} × ${sz} mm`;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -946,6 +988,35 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('infill-val').textContent = `${state.infill}%`;
     renderQuote();
   });
+
+  // Scale slider
+  document.getElementById('scale').addEventListener('input', e => {
+    state.scale = parseInt(e.target.value, 10) / 100;
+    document.getElementById('scale-val').textContent = `${e.target.value}%`;
+    updateScaleHint();
+    // Re-init viewer with new scale
+    if (state.geometry && state.geometry.vertices && state.geometry.vertices.length > 0) {
+      initViewer(state.geometry.vertices);
+    }
+    renderQuote();
+  });
+
+  // Hamburger menu
+  const hamburger = document.getElementById('nav-hamburger');
+  const navLinks = document.querySelector('.nav-links');
+  if (hamburger) {
+    hamburger.addEventListener('click', () => {
+      hamburger.classList.toggle('active');
+      navLinks.classList.toggle('open');
+    });
+    // Close menu when a link is clicked
+    navLinks.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => {
+        hamburger.classList.remove('active');
+        navLinks.classList.remove('open');
+      });
+    });
+  }
 
   // Actions
   document.getElementById('download-quote').addEventListener('click', downloadQuotePDF);
