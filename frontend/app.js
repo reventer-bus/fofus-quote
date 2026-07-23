@@ -1,17 +1,15 @@
 /* ════════════════════════════════════════════════════════════════════
-   FOFUS Quote — frontend engine
+   FOFUS Quote — frontend engine  v0.3
    ────────────────────────────────────────────────────────────────────
-   • STL parser (binary STL, the 99% case; ASCII fallback message)
+   • STL parser (binary STL, the 99% case; ASCII fallback)
+   • 3D model viewer (Three.js OrbitControls)
    • Quote math: volume × density + infill + support estimate
+   •   + post-processing + shipping + GST + minimum order
    • Empirical print-time model calibrated to FOFUS production prints
-   • PDF quote download (client-side, no server roundtrip)
+   • PDF estimate download (client-side, no server roundtrip)
    • "Request printing" POSTs STL + settings to Railway backend
+   • "Get quote on WhatsApp" opens wa.me with pre-filled message
    ════════════════════════════════════════════════════════════════════ */
-
-/*
-    Empirical print-time model calibrated to FOFUS production outputs.
-    Customer-facing copy must not name manufacturer or slicing software brands.
-   */
 
 // ── State ──────────────────────────────────────────────────────────
 const state = {
@@ -19,13 +17,16 @@ const state = {
   fileBuf: null,
   geometry: null,   // { volumeCm3, bbox: {x,y,z}, triangles }
   printer: 'x1c',   // 'a1' | 'x1c' | 'k1max'
-  material: 'pla',  // 'pla' | 'petg' | 'abs' | 'silicon' | 'fibre'
+  material: 'pla',  // 'pla' | 'petg' | 'abs' | 'silicone' | 'fibre'
+  colour: 'black',
   infill: 20,
   layerHeight: 0.20,
-  supports: 'auto', // 'auto' | 'none'
-  quote: null,      // last computed quote (used by PDF + submit)
-  jobId: null,      // backend job id
-  jobStatus: null,  // 'queued' | 'slicing' | 'sliced' | 'slice_failed' | 'awaiting_payment'
+  supports: 'auto', // 'auto' | 'tree' | 'none'
+  postProc: new Set(),
+  quote: null,      // last computed quote
+  jobId: null,
+  jobStatus: null,
+  viewer: null,     // Three.js viewer instance
 };
 
 // ── Constants ──────────────────────────────────────────────────────
@@ -35,23 +36,36 @@ const PRINTERS = {
   k1max:{ name: 'Large 300³ chamber',      ratePerHr: 45, buildMm: 300 },
 };
 const MATERIALS = {
-  pla:    { name: 'PLA',     ratePerG: 2.5,  densityGcm3: 1.24, speed: 1.00 },
-  petg:   { name: 'PETG',    ratePerG: 3.5,  densityGcm3: 1.27, speed: 0.90 },
-  abs:    { name: 'ABS',     ratePerG: 5.0,  densityGcm3: 1.04, speed: 0.85 },
-  silicon:{ name: 'Silicon', ratePerG: 20.0, densityGcm3: 1.20, speed: 0.60 },
-  fibre:  { name: 'Fibre',   ratePerG: 10.0, densityGcm3: 1.30, speed: 0.70 },
+  pla:     { name: 'PLA',               ratePerG: 2.5,  densityGcm3: 1.24, speed: 1.00, custom: false },
+  petg:    { name: 'PETG',              ratePerG: 3.5,  densityGcm3: 1.27, speed: 0.90, custom: false },
+  abs:     { name: 'ABS',               ratePerG: 5.0,  densityGcm3: 1.04, speed: 0.85, custom: false },
+  silicone:{ name: 'Silicone Casting',  ratePerG: 0,    densityGcm3: 1.20, speed: 0.60, custom: true  },
+  fibre:   { name: 'Fibre-Reinforced',  ratePerG: 0,    densityGcm3: 1.30, speed: 0.70, custom: true  },
 };
-const SERVICE_FEE_RATIO = 0.15;  // 15% service markup
+const COLOURS = {
+  black: 'Black', white: 'White', red: 'Red', blue: 'Blue',
+  green: 'Green', yellow: 'Yellow', custom: 'Custom colour',
+};
+const POST_PROC_PRICES = {
+  sanding: 30, primer: 25, painting: 60, metallic: 100,
+  resin: 50, fibre: 80, assembly: 40, packaging: 35,
+};
+const POST_PROC_NAMES = {
+  sanding: 'Sanding', primer: 'Primer', painting: 'Painting', metallic: 'Metallic finish',
+  resin: 'Resin coating', fibre: 'Fibre reinforcement', assembly: 'Assembly', packaging: 'Custom packaging',
+};
+const SERVICE_FEE_RATIO = 0.15;
+const MIN_ORDER = 199;
+const GST_RATE = 0.18;
+const SHIPPING_FLAT = 80;
+const WHATSAPP_NUMBER = '918301874640'; // FOFUS WhatsApp
 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname.includes('vercel.app'))
-  ? (window.FOFUS_API || 'https://quote.business.fofus.in')  // Vercel preview → Railway backend
-  : '';  // Same origin — backend serves frontend
+  ? (window.FOFUS_API || 'https://quote.business.fofus.in')
+  : '';
 
 // ════════════════════════════════════════════════════════════════════
 // STL PARSER (binary)
-// ────────────────────────────────────────────────────────────────────
-// Reference: binary STL = 80-byte header | uint32 triangle count |
-//   per triangle: 3 × float32 normal + 9 × float32 vertices + uint16 attr
-//   = 50 bytes/triangle
+// ════════════════════════════════════════════════════════════════════
 function parseBinarySTL(buf) {
   if (buf.byteLength < 84) throw new Error('File too small to be a binary STL');
   const view = new DataView(buf);
@@ -61,14 +75,14 @@ function parseBinarySTL(buf) {
     throw new Error(`Binary STL truncated: header claims ${triCount} triangles but file is short`);
   }
 
-  let volMm3 = 0;           // signed tetrahedron volume sum
+  let volMm3 = 0;
   let minX=Infinity, minY=Infinity, minZ=Infinity;
   let maxX=-Infinity, maxY=-Infinity, maxZ=-Infinity;
+  const vertices = []; // for 3D viewer
 
   let off = 84;
   for (let i = 0; i < triCount; i++) {
-    // Skip normal (12 bytes) at off..off+12
-    off += 12;
+    off += 12; // skip normal
     const v = [];
     for (let vtx = 0; vtx < 3; vtx++) {
       const x = view.getFloat32(off, true);
@@ -80,14 +94,14 @@ function parseBinarySTL(buf) {
       if (y < minY) minY = y; if (y > maxY) maxY = y;
       if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
     }
-    // Signed tetrahedron volume from origin
+    vertices.push(v[0], v[1], v[2]);
     const [a, b, c] = v;
     volMm3 += (
       a[0] * (b[1] * c[2] - b[2] * c[1]) -
       a[1] * (b[0] * c[2] - b[2] * c[0]) +
       a[2] * (b[0] * c[1] - b[1] * c[0])
     ) / 6;
-    off += 2; // attribute byte count
+    off += 2;
   }
   const volMm3Abs = Math.abs(volMm3);
   return {
@@ -98,16 +112,15 @@ function parseBinarySTL(buf) {
       x: maxX - minX, y: maxY - minY, z: maxZ - minZ,
       min: [minX, minY, minZ], max: [maxX, maxY, maxZ],
     },
+    vertices, // flat array of [x,y,z] triplets for Three.js
   };
 }
 
-// Quick sniff for ASCII STL ("solid ... facet ... vertex ... endsolid")
 function looksLikeASCII(buf) {
   const head = new TextDecoder().decode(new Uint8Array(buf, 0, Math.min(80, buf.byteLength)));
   return /^solid\s+\S+/i.test(head.trimStart()) && /facet\s+normal/i.test(head);
 }
 function parseASCIISTL(text) {
-  // Slow but correct fallback. ~5-15 MB/s — fine for typical ASCII STLs (<50MB).
   const vertexRe = /vertex\s+(-?\d+\.?\d*(?:[eE][-+]?\d+)?)\s+(-?\d+\.?\d*(?:[eE][-+]?\d+)?)\s+(-?\d+\.?\d*(?:[eE][-+]?\d+)?)/g;
   const verts = [];
   let m;
@@ -132,10 +145,9 @@ function parseASCIISTL(text) {
   }
   const volAbs = Math.abs(vol);
   return {
-    triangles: tris,
-    volumeMm3: volAbs,
-    volumeCm3: volAbs / 1000,
+    triangles: tris, volumeMm3: volAbs, volumeCm3: volAbs / 1000,
     bbox: { x: maxX-minX, y: maxY-minY, z: maxZ-minZ, min:[minX,minY,minZ], max:[maxX,maxY,maxZ] },
+    vertices: verts,
   };
 }
 
@@ -145,7 +157,6 @@ async function parseSTLFile(file) {
   try {
     geom = parseBinarySTL(buf);
   } catch (eBin) {
-    // Maybe ASCII — try a quick text decode
     try {
       const text = new TextDecoder().decode(new Uint8Array(buf));
       if (!/facet\s+normal/i.test(text)) throw eBin;
@@ -158,20 +169,125 @@ async function parseSTLFile(file) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// 3D VIEWER (Three.js)
+// ════════════════════════════════════════════════════════════════════
+function initViewer(vertices) {
+  const container = document.getElementById('viewer-canvas');
+  if (!container || !window.THREE) return;
+
+  // Clean up previous viewer
+  if (state.viewer) {
+    state.viewer.renderer.dispose();
+    if (state.viewer.renderer.domElement) container.removeChild(state.viewer.renderer.domElement);
+  }
+
+  const w = container.clientWidth || 300;
+  const h = 280;
+
+  const scene = new THREE.Scene();
+  scene.background = null;
+
+  const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 5000);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  container.appendChild(renderer.domElement);
+
+  // Build geometry from vertices
+  const positions = new Float32Array(vertices.length * 3);
+  for (let i = 0; i < vertices.length; i++) {
+    positions[i * 3] = vertices[i][0];
+    positions[i * 3 + 1] = vertices[i][1];
+    positions[i * 3 + 2] = vertices[i][2];
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+
+  // Center and scale model
+  geometry.computeBoundingBox();
+  const bbox = geometry.boundingBox;
+  const center = new THREE.Vector3();
+  bbox.getCenter(center);
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const scale = maxDim > 0 ? 100 / maxDim : 1;
+  geometry.translate(-center.x, -center.y, -center.z);
+  geometry.scale(scale, scale, scale);
+
+  // Material
+  const material = new THREE.MeshPhongMaterial({
+    color: 0xC9A063,
+    specular: 0x333333,
+    shininess: 30,
+    flatShading: false,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  // Wireframe overlay (toggleable)
+  const wireMat = new THREE.MeshBasicMaterial({ color: 0x608FA8, wireframe: true });
+  const wireMesh = new THREE.Mesh(geometry, wireMat);
+  wireMesh.visible = false;
+  scene.add(wireMesh);
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0x666666);
+  scene.add(ambient);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(100, 100, 200);
+  scene.add(dirLight);
+  const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+  dirLight2.position.set(-100, -50, -100);
+  scene.add(dirLight2);
+
+  // Grid
+  const grid = new THREE.GridHelper(200, 20, 0x333333, 0x222222);
+  grid.position.y = -55;
+  scene.add(grid);
+
+  // Controls
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  camera.position.set(80, 80, 120);
+  controls.target.set(0, 0, 0);
+  controls.update();
+
+  let wireframeOn = false;
+  document.getElementById('viewer-wireframe').onclick = () => {
+    wireframeOn = !wireframeOn;
+    mesh.visible = !wireframeOn;
+    wireMesh.visible = wireframeOn;
+  };
+  document.getElementById('viewer-reset').onclick = () => {
+    camera.position.set(80, 80, 120);
+    controls.target.set(0, 0, 0);
+    controls.update();
+  };
+
+  // Resize handler
+  function onResize() {
+    const nw = container.clientWidth || 300;
+    camera.aspect = nw / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(nw, h);
+  }
+  window.addEventListener('resize', onResize);
+
+  // Render loop
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  state.viewer = { renderer, scene, camera, mesh, wireMesh, controls };
+}
+
+// ════════════════════════════════════════════════════════════════════
 // QUOTE MODEL
-// ────────────────────────────────────────────────────────────────────
-// Filament used (grams) for a part:
-//   shells: 4 perimeters × layer_height × perimeter_length
-//   infill: percentage of internal volume
-//   top/bottom: 4 layers × layer_height × (top_area)
-// We approximate perimeter from the bounding-box surface:
-//   perimeter ≈ 4 * (bbox.x + bbox.y) * 2 → just use a fixed effective
-//   perimeter length scaled by sqrt(volume).
-//
-// Calibration constants derived from FOFUS production prints on a
-// sample of test parts (256³ engineering chamber, 0.28 mm resolution, generic PLA profile):
-//   effective_shell_volume_cm3 = kShell * volumeCm3^0.66
-//   effective_topbottom_cm3   = kTopBot * (bbox.x*bbox.y) / 100 * layerCount
+// ════════════════════════════════════════════════════════════════════
 function computeQuote() {
   if (!state.geometry) return null;
   const g = state.geometry;
@@ -179,50 +295,84 @@ function computeQuote() {
   const mat = MATERIALS[state.material];
   const lh  = state.layerHeight;
 
-  // 1. Shell volume (walls). Empirical: ~kShell * V^0.66 for typical parts.
+  // Custom materials — no instant estimate
+  if (mat.custom) {
+    return { custom: true };
+  }
+
+  // 1. Shell volume
   const kShell = 0.85;
   const shellVolCm3 = kShell * Math.pow(g.volumeCm3, 0.66);
 
-  // 2. Top + bottom skin volume. Layer count for top+bottom = 8 (4 top + 4 bottom)
-  //    Area approximated as sqrt(V) for irregular parts, capped by top face.
+  // 2. Top + bottom skin volume
   const topBotLayers = 8;
   const topAreaCm2 = Math.min(
     (g.bbox.x/10) * (g.bbox.y/10),
     Math.pow(g.volumeCm3, 2/3)
   );
-  const topBotVolCm3 = topAreaCm2 * lh * topBotLayers / 10; // cm² × cm = cm³
+  const topBotVolCm3 = topAreaCm2 * lh * topBotLayers / 10;
 
   // 3. Infill volume
   const infillVolCm3 = Math.max(0, g.volumeCm3 - shellVolCm3 - topBotVolCm3) * (state.infill / 100);
 
-  // 4. Support material estimate (only if auto)
-  //    Typical support adds 8-15% of part volume for moderately complex parts.
-  const supportFactor = state.supports === 'auto' ? 0.10 : 0.0;
+  // 4. Support material estimate
+  const supportFactor = state.supports === 'auto' ? 0.10 : state.supports === 'tree' ? 0.06 : 0.0;
   const supportVolCm3 = g.volumeCm3 * supportFactor;
 
   // 5. Total filament volume + weight
   const totalFilamentCm3 = shellVolCm3 + topBotVolCm3 + infillVolCm3 + supportVolCm3;
   const weightG = totalFilamentCm3 * mat.densityGcm3;
 
-  // 6. Print time. Empirical model:
-  //    base print speed scaled by layer height & material speed
-  //    overhead = setup + travel (~3-8 min baseline + 0.5 min per 100 g filament)
-  const effRate = (lh / 0.20) * 12 * mat.speed;  // cm³/min — empirically tuned to 0.20 baseline
+  // 6. Print time
+  const effRate = (lh / 0.20) * 12 * mat.speed;
   const printMinutes = totalFilamentCm3 / effRate;
   const overheadMinutes = 4 + (weightG / 100) * 1.2;
   const totalMinutes = printMinutes + overheadMinutes;
   const totalHours = totalMinutes / 60;
 
-  // 7. Cost
+  // 7. Costs
   const materialCost = weightG * mat.ratePerG;
   const machineCost = totalHours * prn.ratePerHr;
   const subtotal = materialCost + machineCost;
-  const serviceFee = subtotal * SERVICE_FEE_RATIO;
-  const total = subtotal + serviceFee;
+
+  // 8. Post-processing
+  let postProcCost = 0;
+  const ppItems = [];
+  for (const key of state.postProc) {
+    const cost = POST_PROC_PRICES[key] || 0;
+    postProcCost += cost;
+    ppItems.push(POST_PROC_NAMES[key] || key);
+  }
+
+  // 9. Service fee (on subtotal + post-processing)
+  const serviceFee = (subtotal + postProcCost) * SERVICE_FEE_RATIO;
+
+  // 10. Shipping
+  const shipping = SHIPPING_FLAT;
+
+  // 11. Pre-GST subtotal
+  let preGstSubtotal = subtotal + postProcCost + serviceFee + shipping;
+
+  // 12. Minimum order adjustment
+  let minOrderApplied = false;
+  if (preGstSubtotal < MIN_ORDER) {
+    preGstSubtotal = MIN_ORDER;
+    minOrderApplied = true;
+  }
+
+  // 13. GST
+  const gst = preGstSubtotal * GST_RATE;
+
+  // 14. Grand total
+  const total = preGstSubtotal + gst;
 
   return {
+    custom: false,
     weightG, totalHours, totalMinutes,
-    materialCost, machineCost, serviceFee, total,
+    materialCost, machineCost, postProcCost, ppItems,
+    serviceFee, shipping, gst,
+    preGstSubtotal, total,
+    minOrderApplied,
     breakdown: { shellVolCm3, topBotVolCm3, infillVolCm3, supportVolCm3, totalFilamentCm3 },
   };
 }
@@ -259,26 +409,66 @@ function renderQuote() {
   document.getElementById('empty-state').hidden = true;
   document.getElementById('quote-body').hidden = false;
 
+  // Custom material — show custom quote note
+  if (q.custom) {
+    document.getElementById('q-time').textContent = '—';
+    document.getElementById('q-weight').textContent = '—';
+    document.getElementById('q-mat-label').textContent = `${mat.name}`;
+    document.getElementById('q-mat-cost').textContent = 'Custom quote';
+    document.getElementById('q-mach-label').textContent = `Build chamber (${prn.buildMm}³)`;
+    document.getElementById('q-mach-cost').textContent = 'Custom quote';
+    document.getElementById('q-pp-row').hidden = true;
+    document.getElementById('q-service').textContent = '—';
+    document.getElementById('q-shipping').textContent = '—';
+    document.getElementById('q-subtotal').textContent = 'Custom quote';
+    document.getElementById('q-gst').textContent = '—';
+    document.getElementById('q-total').textContent = 'Custom';
+    document.getElementById('custom-quote-note').hidden = false;
+    document.getElementById('min-order-note').hidden = true;
+    document.getElementById('estimate-disclaimer').style.display = 'none';
+    document.getElementById('contact-form').hidden = false;
+    return;
+  }
+
+  document.getElementById('custom-quote-note').hidden = true;
+  document.getElementById('estimate-disclaimer').style.display = '';
+
   document.getElementById('q-time').textContent = fmt.hrs(q.totalMinutes);
   document.getElementById('q-weight').textContent = `${q.weightG.toFixed(1)} g`;
   document.getElementById('q-mat-label').textContent = `Material (${mat.name} · ${state.infill}% infill)`;
   document.getElementById('q-mat-cost').textContent = fmt.inr(q.materialCost);
   document.getElementById('q-mach-label').textContent = `Build chamber (${prn.buildMm}³)`;
   document.getElementById('q-mach-cost').textContent = fmt.inr(q.machineCost);
+
+  // Post-processing row
+  const ppRow = document.getElementById('q-pp-row');
+  if (q.postProcCost > 0) {
+    ppRow.hidden = false;
+    document.getElementById('q-pp-label').textContent = `Post-processing (${q.ppItems.join(', ')})`;
+    document.getElementById('q-pp-cost').textContent = fmt.inr(q.postProcCost);
+  } else {
+    ppRow.hidden = true;
+  }
+
   document.getElementById('q-service').textContent = fmt.inr(q.serviceFee);
+  document.getElementById('q-shipping').textContent = fmt.inr(q.shipping);
+  document.getElementById('q-subtotal').textContent = fmt.inr(q.preGstSubtotal);
+  document.getElementById('q-gst').textContent = fmt.inr(q.gst);
   document.getElementById('q-total').textContent = fmt.inr(q.total);
 
-  // Show contact form once quote is ready
+  // Min order note
+  document.getElementById('min-order-note').hidden = !q.minOrderApplied;
+
+  // Show contact form
   document.getElementById('contact-form').hidden = false;
 
-  // Build-volume fit check (axis-aligned; real check needs OBB rotation)
+  // Build-volume fit check
   const b = g.bbox;
   const fitWarn = document.getElementById('fit-warn');
   const oversize = (b.x > prn.buildMm) || (b.y > prn.buildMm) || (b.z > prn.buildMm);
   fitWarn.hidden = !oversize;
 }
 
-// Collect customer contact details from the form
 function getContact() {
   const name = document.getElementById('c-name')?.value.trim() || '';
   const phone = document.getElementById('c-phone')?.value.trim() || '';
@@ -300,7 +490,6 @@ function validateContact(c) {
 // ════════════════════════════════════════════════════════════════════
 async function handleFile(file) {
   if (!file) return;
-  // 100 MB cap
   if (file.size > 100 * 1024 * 1024) {
     setNote('File too large (max 100 MB).', 'err'); return;
   }
@@ -317,12 +506,8 @@ async function handleFile(file) {
       geom = r.geom;
       state.fileBuf = r.buf;
     } else {
-      // OBJ / 3MF: geometry-only analysis needs the server. We compute
-      // bounding box from the file's extent metadata if present (3MF),
-      // otherwise request a server-side analysis.
       setNote(`${ext.toUpperCase()} analysis needs the server. Pick an STL for instant in-browser quoting, or click Request Printing to start a server-side analysis.`);
       state.file = file;
-      // Update stats placeholders so user sees something happened
       document.getElementById('dz-filename').textContent = file.name;
       document.getElementById('dz-filesize').textContent = `${(file.size/1024/1024).toFixed(2)} MB`;
       document.getElementById('dz-file').hidden = false;
@@ -339,6 +524,12 @@ async function handleFile(file) {
     document.getElementById('stat-bbox').textContent = `${geom.bbox.x.toFixed(1)} × ${geom.bbox.y.toFixed(1)} × ${geom.bbox.z.toFixed(1)} mm`;
     document.getElementById('stat-tris').textContent = geom.triangles.toLocaleString('en-IN');
 
+    // Show and init 3D viewer
+    document.getElementById('viewer-wrap').hidden = false;
+    if (geom.vertices && geom.vertices.length > 0) {
+      initViewer(geom.vertices);
+    }
+
     setNote(`Parsed ${geom.triangles.toLocaleString('en-IN')} triangles.`, 'ok');
     renderQuote();
   } catch (e) {
@@ -354,7 +545,55 @@ function setNote(text, kind='') {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// PDF QUOTE
+// WHATSAPP QUOTE
+// ════════════════════════════════════════════════════════════════════
+function sendWhatsAppQuote() {
+  if (!state.file) {
+    setNote('Upload a file first.', 'err'); return;
+  }
+  const contact = getContact();
+  const q = state.quote;
+  const prn = PRINTERS[state.printer];
+  const mat = MATERIALS[state.material];
+  const colour = COLOURS[state.colour] || '—';
+
+  let msg = `Hi FOFUS, I want to print a model. Here are my details:\n\n`;
+  msg += `File: ${state.file.name}\n`;
+  msg += `Material: ${mat.name}\n`;
+  msg += `Colour: ${colour}\n`;
+  msg += `Build chamber: ${prn.name}\n`;
+  msg += `Infill: ${state.infill}%\n`;
+  msg += `Resolution: ${state.layerHeight} mm\n`;
+  msg += `Supports: ${state.supports}\n`;
+
+  // Post-processing
+  if (state.postProc.size > 0) {
+    const ppNames = [...state.postProc].map(k => POST_PROC_NAMES[k] || k);
+    msg += `Post-processing: ${ppNames.join(', ')}\n`;
+  }
+
+  if (q && !q.custom) {
+    msg += `\nMy instant estimate:\n`;
+    msg += `  Print time: ${fmt.hrs(q.totalMinutes)}\n`;
+    msg += `  Weight: ${q.weightG.toFixed(1)} g\n`;
+    msg += `  Total: ${fmt.inr(q.total)} (incl. GST)\n`;
+  } else if (q && q.custom) {
+    msg += `\nThis material requires a custom quote. Please provide a price.\n`;
+  }
+
+  if (contact.name) msg += `\nName: ${contact.name}\n`;
+  if (contact.phone) msg += `Phone: ${contact.phone}\n`;
+  if (contact.email) msg += `Email: ${contact.email}\n`;
+  if (contact.pincode) msg += `Pincode: ${contact.pincode}\n`;
+  if (contact.notes) msg += `Notes: ${contact.notes}\n`;
+
+  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+  setNote('Opening WhatsApp with your quote details…', 'ok');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PDF ESTIMATE
 // ════════════════════════════════════════════════════════════════════
 function downloadQuotePDF() {
   if (!state.quote || !state.geometry) return;
@@ -362,10 +601,18 @@ function downloadQuotePDF() {
   const g = state.geometry;
   const prn = PRINTERS[state.printer];
   const mat = MATERIALS[state.material];
+  const colour = COLOURS[state.colour] || '—';
 
-  // Build a printable HTML doc, open in new window, print → user saves as PDF.
-  // This avoids a 200KB jsPDF dep and renders perfectly.
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>FOFUS Quote</title>
+  if (q.custom) {
+    setNote('Custom quote materials cannot generate a PDF estimate. Use WhatsApp instead.', 'err');
+    return;
+  }
+
+  const ppLine = q.postProcCost > 0
+    ? `<tr><th>Post-processing (${q.ppItems.join(', ')})</th><td>${fmt.inr(q.postProcCost)}</td></tr>`
+    : '';
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>FOFUS Estimate</title>
 <style>
   body{font-family:Georgia,serif;color:#080807;background:#fff;padding:40px;max-width:680px;margin:0 auto}
   .h{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #C9A063;padding-bottom:14px;margin-bottom:24px}
@@ -378,21 +625,27 @@ function downloadQuotePDF() {
   th,td{padding:10px 0;border-bottom:1px solid #E5E0D8;text-align:left;font-size:13px}
   th{font-size:10px;letter-spacing:.16em;color:#524E46;text-transform:uppercase;font-weight:500}
   td:last-child{text-align:right;font-family:'Courier New',monospace}
+  .subtotal{margin-top:16px;padding:14px;background:#FAF6EE;border-left:3px solid #C9A063}
+  .subtotal-row{display:flex;justify-content:space-between;align-items:baseline}
+  .subtotal-label{font-size:11px;letter-spacing:.18em;color:#524E46;text-transform:uppercase}
+  .subtotal-val{font-size:20px;color:#333;font-family:monospace}
+  .gst-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E5E0D8}
   .total{margin-top:24px;padding:20px;background:#FAF6EE;border-left:3px solid #C9A063}
   .total-row{display:flex;justify-content:space-between;align-items:baseline}
   .total-label{font-size:11px;letter-spacing:.18em;color:#C9A063;text-transform:uppercase}
   .total-val{font-size:42px;color:#C9A063;font-weight:300}
+  .disclaimer{font-size:11px;color:#B05030;margin-top:16px;padding:10px;background:#FFF5F0;border:1px solid #E5D0C0;border-radius:4px}
   .note{font-size:11px;color:#524E46;margin-top:20px;line-height:1.6;border-top:1px solid #E5E0D8;padding-top:14px}
   @media print{body{padding:20px}.total{background:#fff}}
 </style></head><body>
 <div class="h">
   <div><div class="logo">FOFUS</div><div class="tag">3D Manufacturing · Kerala</div></div>
   <div style="text-align:right">
-    <div style="font-size:11px;color:#524E46">Quote</div>
+    <div style="font-size:11px;color:#524E46">Estimate</div>
     <div style="font-size:18px;font-family:monospace">${Date.now().toString(36).toUpperCase()}</div>
   </div>
 </div>
-<h1>Your <em>3D printing</em> quote</h1>
+<h1>Your <em>3D printing</em> estimate</h1>
 <div class="meta">
   File: <b>${state.file?.name || '—'}</b> &middot;
   ${g.triangles.toLocaleString('en-IN')} triangles &middot;
@@ -404,9 +657,10 @@ function downloadQuotePDF() {
 <table>
   <tr><th>Build chamber</th><td>${prn.name} (${prn.buildMm}³ build)</td></tr>
   <tr><th>Material</th><td>${mat.name}</td></tr>
+  <tr><th>Colour</th><td>${colour}</td></tr>
   <tr><th>Infill</th><td>${state.infill}%</td></tr>
   <tr><th>Resolution</th><td>${state.layerHeight} mm</td></tr>
-  <tr><th>Supports</th><td>${state.supports === 'auto' ? 'Auto-generated' : 'None'}</td></tr>
+  <tr><th>Supports</th><td>${state.supports === 'auto' ? 'Auto-generated' : state.supports === 'tree' ? 'Tree supports' : 'None'}</td></tr>
   <tr><th>Print time</th><td>${fmt.hrs(q.totalMinutes)}</td></tr>
   <tr><th>Weight</th><td>${q.weightG.toFixed(1)} g</td></tr>
 </table>
@@ -414,21 +668,38 @@ function downloadQuotePDF() {
 <table>
   <tr><th>Material cost</th><td>${fmt.inr(q.materialCost)}</td></tr>
   <tr><th>Machine time (${prn.buildMm}³ chamber)</th><td>${fmt.inr(q.machineCost)}</td></tr>
+  ${ppLine}
   <tr><th>Service fee (${(SERVICE_FEE_RATIO*100)}%)</th><td>${fmt.inr(q.serviceFee)}</td></tr>
+  <tr><th>Shipping</th><td>${fmt.inr(q.shipping)}</td></tr>
 </table>
+
+<div class="subtotal">
+  <div class="subtotal-row">
+    <span class="subtotal-label">Subtotal</span>
+    <span class="subtotal-val">${fmt.inr(q.preGstSubtotal)}</span>
+  </div>
+</div>
+<div class="gst-row">
+  <span style="font-size:13px;color:#524E46">GST (18%)</span>
+  <span style="font-family:monospace;font-size:13px">${fmt.inr(q.gst)}</span>
+</div>
 
 <div class="total">
   <div class="total-row">
-    <span class="total-label">Total</span>
+    <span class="total-label">Total (incl. GST)</span>
     <span class="total-val">${fmt.inr(q.total)}</span>
   </div>
 </div>
 
+${q.minOrderApplied ? '<div class="disclaimer">ⓘ A minimum order value of ₹199 applies. Your estimate has been adjusted accordingly.</div>' : ''}
+
+<div class="disclaimer">
+  This is an instant estimate. Final price may vary after production review for complex models, special materials, or post-processing. Valid for 7 days.
+</div>
+
 <div class="note">
-  Quote is indicative and valid for 7 days. Final price confirmed after our backend
-  re-slices your file with the FOFUS production engine for the selected build chamber. GST extra as applicable.
-  Pickup at Irinjalakuda, Thrissur · pan-India shipping available.
-  <br><br>FOFUS · hello@fofus.in · <a href="https://fofus.in">fofus.in</a>
+  Pickup at Irinjalakuda, Thrissur · pan-India shipping available. Estimated delivery: 3–5 working days.<br><br>
+  FOFUS · hello@fofus.in · <a href="https://fofus.in">fofus.in</a>
 </div>
 </body></html>`;
 
@@ -454,6 +725,7 @@ async function requestPrinting() {
   const g = state.geometry;
   const prn = PRINTERS[state.printer];
   const mat = MATERIALS[state.material];
+  const colour = COLOURS[state.colour] || '—';
 
   const payload = {
     file_name: state.file.name,
@@ -464,16 +736,22 @@ async function requestPrinting() {
     printer_name: prn.name,
     material: state.material,
     material_name: mat.name,
+    colour: state.colour,
     infill: state.infill,
     layer_height: state.layerHeight,
     supports: state.supports,
-    quote: {
+    post_processing: [...state.postProc],
+    quote: q.custom ? null : {
       weight_g: q.weightG,
       hours: q.totalHours,
       minutes: q.totalMinutes,
       material_cost: q.materialCost,
       machine_cost: q.machineCost,
+      post_proc_cost: q.postProcCost,
       service_fee: q.serviceFee,
+      shipping: q.shipping,
+      gst: q.gst,
+      subtotal: q.preGstSubtotal,
       total: q.total,
       total_inr: q.total,
     },
@@ -492,29 +770,24 @@ async function requestPrinting() {
     if (!r.ok) throw new Error(`Backend returned ${r.status}`);
     const data = await r.json();
     const jobId = data.job_id;
+    state.jobId = jobId;
 
-    // Trigger server-side final production slice
-    setNote('Quote saved. Running final production slice for the confirmed price…');
+    setNote('Estimate saved. Running final production slice for the confirmed price…');
     await fetch(`${API_BASE}/api/print-jobs/${jobId}/slice`, { method: 'POST' });
 
-    // Poll until slicing is done
-    pollJobForPayment(jobId, contact, q.total);
+    pollJobForPayment(jobId, contact, q.custom ? 0 : q.total);
   } catch (e) {
     fallbackToMailto(contact, q, prn, mat);
   }
 }
 
-/*
-   Server-side slicing may fail for exotic geometry. Fall back to the
-   instant estimate so we never lose a ready-to-buy customer.
-*/
 async function pollJobForPayment(jobId, contact, clientTotal) {
   const btn = document.getElementById('request-print');
   btn.disabled = true;
   btn.textContent = 'Finalising quote…';
 
   let attempts = 0;
-  const maxAttempts = 60; // ~5 minutes
+  const maxAttempts = 60;
   const timer = setInterval(async () => {
     attempts++;
     try {
@@ -546,7 +819,7 @@ async function pollJobForPayment(jobId, contact, clientTotal) {
         setNote('Slicing is taking longer than usual. Continue with the instant estimate?', 'ok');
       }
     } catch (e) {
-      // ignore polling errors, keep trying
+      // ignore polling errors
     }
   }, 5000);
 }
@@ -574,15 +847,20 @@ async function createCheckout(jobId, fallbackTotal) {
 
 function fallbackToMailto(contact, q, prn, mat) {
   const subject = encodeURIComponent(`FOFUS 3D print job — ${state.file.name}`);
+  const colour = COLOURS[state.colour] || '—';
+  const ppStr = state.postProc.size > 0
+    ? [...state.postProc].map(k => POST_PROC_NAMES[k]).join(', ')
+    : 'None';
+  const totalStr = q.custom ? 'Custom quote' : fmt.inr(q.total);
   const body = encodeURIComponent(
-    `Hi FOFUS,\n\nI'd like to proceed with the quote on your site.\n\n` +
+    `Hi FOFUS,\n\nI'd like to proceed with the estimate on your site.\n\n` +
     `File: ${state.file.name} (${(state.file.size/1024/1024).toFixed(2)} MB)\n` +
-    `Printer: ${prn.name}\nMaterial: ${mat.name}\n` +
-    `Infill: ${state.infill}%  Layer: ${state.layerHeight} mm  Supports: ${state.supports}\n\n` +
-    `Quote (instant estimate):\n` +
-    `  Print time: ${fmt.hrs(q.totalMinutes)}\n` +
-    `  Weight: ${q.weightG.toFixed(1)} g\n` +
-    `  Total: ${fmt.inr(q.total)}\n\n` +
+    `Printer: ${prn.name}\nMaterial: ${mat.name}\nColour: ${colour}\n` +
+    `Infill: ${state.infill}%  Layer: ${state.layerHeight} mm  Supports: ${state.supports}\n` +
+    `Post-processing: ${ppStr}\n\n` +
+    `Estimate (instant):\n` +
+    (q.custom ? `  Custom quote required\n` :
+    `  Print time: ${fmt.hrs(q.totalMinutes)}\n  Weight: ${q.weightG.toFixed(1)} g\n  Total: ${totalStr} (incl. GST)\n\n`) +
     `Name: ${contact.name}\nPhone: ${contact.phone}\nEmail: ${contact.email || ''}\nPincode: ${contact.pincode}\nNotes: ${contact.notes || ''}\n\nThanks!`
   );
   setNote(`Couldn't reach the print queue backend. Email us instead — link opened with your quote pre-filled.`, 'err');
@@ -643,6 +921,25 @@ document.addEventListener('DOMContentLoaded', () => {
     renderQuote();
   });
 
+  // Colour picker
+  document.getElementById('colour-picker').addEventListener('click', e => {
+    const btn = e.target.closest('.colour-pick');
+    if (!btn) return;
+    document.querySelectorAll('.colour-pick').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    state.colour = btn.dataset.colour;
+  });
+
+  // Post-processing checkboxes
+  document.getElementById('post-proc').addEventListener('change', e => {
+    const cb = e.target;
+    if (cb.type !== 'checkbox') return;
+    const key = cb.dataset.pp;
+    if (cb.checked) state.postProc.add(key);
+    else state.postProc.delete(key);
+    renderQuote();
+  });
+
   // Slider
   document.getElementById('infill').addEventListener('input', e => {
     state.infill = parseInt(e.target.value, 10);
@@ -652,6 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Actions
   document.getElementById('download-quote').addEventListener('click', downloadQuotePDF);
+  document.getElementById('whatsapp-quote').addEventListener('click', sendWhatsAppQuote);
   document.getElementById('request-print').addEventListener('click', () => {
     if (state.jobId && (state.jobStatus === 'sliced' || state.jobStatus === 'slice_failed' || state.jobStatus === 'awaiting_payment')) {
       createCheckout(state.jobId, state.quote?.total || 0);
@@ -660,9 +958,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Theme toggle — dark/light mode
+  // Theme toggle
   const themeToggle = document.getElementById('theme-toggle');
-  // Restore saved theme or default to dark
   const savedTheme = localStorage.getItem('fofus-quote-theme');
   if (savedTheme) {
     document.documentElement.setAttribute('data-theme', savedTheme);

@@ -8,6 +8,13 @@ const RATES = {
   material:{ pla: 2.5, petg: 3.5, abs: 3.0, tpu: 6.0, pacf: 12.0 },
 };
 const SERVICE_FEE_RATIO = 0.15;
+const GST_RATE = 0.18;
+const SHIPPING_FLAT = 80;
+const MIN_ORDER = 199;
+const POST_PROC_PRICES = {
+  sanding: 30, primer: 25, painting: 60, metallic: 100,
+  resin: 50, fibre: 80, assembly: 40, packaging: 35,
+};
 
 // OrcaSlicer writes these into the gcode footer/header. Different versions
 // emit different combos — we match all of them.
